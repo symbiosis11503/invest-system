@@ -3,12 +3,21 @@ import sqlite3
 import json
 import math
 import os
+import functools
+import time
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, Response, send_file, render_template, send_from_directory, request
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "db/trades.db")
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), static_folder=os.path.join(BASE_DIR, 'static'))
+_START_TIME = time.time()
+
+
+@app.route("/api/health")
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok", "service": "invest-system", "uptime": round(time.time() - _START_TIME, 1)})
 
 
 def get_conn():
@@ -71,6 +80,27 @@ def rows_to_dicts(rows):
     return [dict(r) for r in rows]
 
 
+# ── 簡易快取 ──────────────────────────────────────────
+_cache = {}
+
+def cached(ttl_seconds=300):
+    """簡易記憶體快取，TTL 預設 5 分鐘"""
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            key = f"{fn.__name__}:{args}:{kwargs}"
+            now = time.time()
+            if key in _cache:
+                val, ts = _cache[key]
+                if now - ts < ttl_seconds:
+                    return val
+            result = fn(*args, **kwargs)
+            _cache[key] = (result, now)
+            return result
+        return wrapper
+    return decorator
+
+
 # ── API ──────────────────────────────────────────────
 
 @app.route("/api/backtests")
@@ -101,6 +131,7 @@ def api_trades():
 
 
 @app.route("/api/symbols")
+@cached(ttl_seconds=600)
 def api_symbols():
     conn = get_conn()
     rows = conn.execute("""
@@ -115,6 +146,7 @@ def api_symbols():
 
 
 @app.route("/api/symbol-names")
+@cached(ttl_seconds=3600)
 def api_symbol_names():
     conn = get_conn()
     rows = conn.execute("SELECT symbol, name_zh, name_en, exchange, category FROM symbol_names ORDER BY symbol").fetchall()
@@ -1197,35 +1229,6 @@ def api_manifest():
     })
 
 
-@app.route("/health")
-def health():
-    """健康檢查端點"""
-    conn = get_conn()
-    symbols = conn.execute("SELECT COUNT(DISTINCT symbol) FROM market_data").fetchone()[0]
-    rows = conn.execute("SELECT COUNT(*) FROM market_data").fetchone()[0]
-    news = conn.execute("SELECT COUNT(*) FROM news_intelligence").fetchone()[0]
-    news_analyzed = conn.execute("SELECT COUNT(*) FROM news_intelligence WHERE sentiment IS NOT NULL").fetchone()[0]
-    backtests = conn.execute("SELECT COUNT(*) FROM backtest_results").fetchone()[0]
-    eps_count = conn.execute("SELECT COUNT(*) FROM tw_eps").fetchone()[0]
-    per_count = conn.execute("SELECT COUNT(*) FROM tw_per").fetchone()[0]
-    inst_count = conn.execute("SELECT COUNT(*) FROM tw_institutional").fetchone()[0]
-    conn.close()
-    return jsonify({
-        "status": "ok",
-        "name": "Symbiosis Invest",
-        "version": "2.0.0",
-        "data": {
-            "symbols": symbols,
-            "market_rows": rows,
-            "news_total": news,
-            "news_analyzed": news_analyzed,
-            "backtests": backtests,
-            "eps": eps_count,
-            "per": per_count,
-            "institutional": inst_count,
-        },
-        "timestamp": datetime.now().isoformat(),
-    })
 
 
 # ── 模擬交易 ───────────────────────────────────────────
@@ -1463,6 +1466,7 @@ def api_ptt_sentiment():
 
 
 @app.route("/api/bubble-indicators")
+@cached(ttl_seconds=300)
 def api_bubble_indicators():
     """泡沫指標 — 5 項市場風險訊號"""
     conn = get_conn()
@@ -1622,6 +1626,67 @@ def api_bubble_indicators():
         "overall_level": overall_level,
         "indicators": indicators,
     })
+
+
+@app.route("/api/weekly-summary")
+@cached(ttl_seconds=600)
+def api_weekly_summary():
+    """本週市場週報摘要"""
+    conn = get_conn()
+    # 最近 5 個交易日
+    key_symbols = {
+        '^TWII': '台灣加權', '^GSPC': 'S&P 500', '^N225': '日經225',
+        '^HSI': '恆生', 'GC=F': '黃金', 'BTC-USD': '比特幣', 'CL=F': '原油'
+    }
+    markets = []
+    for sym, name in key_symbols.items():
+        rows = conn.execute(
+            "SELECT date, close FROM market_data WHERE symbol=? ORDER BY date DESC LIMIT 6",
+            (sym,)
+        ).fetchall()
+        if len(rows) >= 2:
+            latest = rows[0]['close']
+            prev = rows[-1]['close']
+            change_pct = round((latest - prev) / prev * 100, 2) if prev else 0
+            markets.append({
+                'symbol': sym, 'name': name,
+                'latest': round(latest, 2), 'prev': round(prev, 2),
+                'change_pct': change_pct,
+                'date_range': f"{rows[-1]['date']} ~ {rows[0]['date']}"
+            })
+
+    # 本週新聞情緒統計
+    week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+    mood = conn.execute("""
+        SELECT sentiment, COUNT(*) as cnt, ROUND(AVG(score), 1) as avg_score
+        FROM news_intelligence
+        WHERE analyzed_at > ? AND sentiment IN ('bullish','bearish','neutral')
+        GROUP BY sentiment
+    """, (week_ago,)).fetchall()
+    sentiment = {r['sentiment']: {'count': r['cnt'], 'avg_score': r['avg_score']} for r in mood}
+
+    # 本週最佳/最差策略
+    best = conn.execute("""
+        SELECT symbol, strategy, total_return, sharpe_ratio
+        FROM backtest_results ORDER BY total_return DESC LIMIT 5
+    """).fetchall()
+
+    conn.close()
+    return jsonify({
+        'updated': datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
+        'period': f"{week_ago} ~ {datetime.now().strftime('%Y-%m-%d')}",
+        'markets': markets,
+        'sentiment': sentiment,
+        'top_strategies': rows_to_dicts(best),
+    })
+
+
+@app.route("/api/cache-stats")
+def api_cache_stats():
+    """快取統計"""
+    now = time.time()
+    active = sum(1 for _, (_, ts) in _cache.items() if now - ts < 3600)
+    return jsonify({'total_entries': len(_cache), 'active': active})
 
 
 if __name__ == "__main__":
