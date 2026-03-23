@@ -9,6 +9,7 @@
 import json
 import os
 import sqlite3
+import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -19,6 +20,175 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import DB_PATH, load_env
 
 load_env()
+
+
+# ── AI 市場總結 & 技術面情境 ──────────────────────────────
+
+def _get_technical_snapshot():
+    """從 market_data 計算主要市場的 RSI(14) 和 MA(5/20/60)"""
+    conn = get_conn()
+    key_symbols = {'^TWII': '台灣加權', '^GSPC': 'S&P500', 'GC=F': '黃金', 'BTC-USD': '比特幣'}
+    snapshots = []
+    for sym, name in key_symbols.items():
+        rows = conn.execute(
+            "SELECT close FROM market_data WHERE symbol=? ORDER BY date DESC LIMIT 60",
+            (sym,)
+        ).fetchall()
+        if len(rows) < 14:
+            continue
+        closes = [r['close'] for r in rows][::-1]  # 由舊到新
+        # RSI 14
+        gains, losses = [], []
+        for i in range(1, min(15, len(closes))):
+            diff = closes[i] - closes[i - 1]
+            gains.append(max(diff, 0))
+            losses.append(max(-diff, 0))
+        avg_gain = sum(gains) / 14 if gains else 0
+        avg_loss = sum(losses) / 14 if losses else 0.0001
+        rsi = 100 - 100 / (1 + avg_gain / avg_loss) if avg_loss else 100
+
+        latest = closes[-1]
+        ma5 = sum(closes[-5:]) / 5 if len(closes) >= 5 else latest
+        ma20 = sum(closes[-20:]) / 20 if len(closes) >= 20 else latest
+        ma60 = sum(closes[-60:]) / 60 if len(closes) >= 60 else latest
+
+        snapshots.append({
+            'symbol': sym, 'name': name, 'close': latest,
+            'rsi': round(rsi, 1), 'ma5': round(ma5, 2),
+            'ma20': round(ma20, 2), 'ma60': round(ma60, 2),
+        })
+    conn.close()
+    return snapshots
+
+
+def _describe_technical(snapshots):
+    """用規則把技術指標轉成文字描述"""
+    lines = []
+    for s in snapshots:
+        parts = []
+        # RSI 描述
+        if s['rsi'] > 70:
+            parts.append(f"RSI {s['rsi']} 超買區")
+        elif s['rsi'] < 30:
+            parts.append(f"RSI {s['rsi']} 超賣區")
+        else:
+            parts.append(f"RSI {s['rsi']} 中性")
+        # MA 趨勢
+        if s['close'] > s['ma5'] > s['ma20']:
+            parts.append("短中期均線多頭排列")
+        elif s['close'] < s['ma5'] < s['ma20']:
+            parts.append("短中期均線空頭排列")
+        elif s['close'] > s['ma20'] and s['close'] < s['ma5']:
+            parts.append("短線回檔但中期趨勢仍上")
+        elif s['close'] < s['ma20'] and s['close'] > s['ma5']:
+            parts.append("短線反彈但中期趨勢仍弱")
+        else:
+            parts.append("均線糾結，方向不明")
+        # 60 日均線判斷
+        if s['close'] > s['ma60']:
+            parts.append("站穩季線之上")
+        else:
+            parts.append("跌破季線")
+        lines.append(f"• {s['name']}: {'，'.join(parts)}")
+    return lines
+
+
+def _call_groq(prompt: str) -> str | None:
+    """呼叫 Groq API 生成文字"""
+    api_key = os.environ.get('GROQ_API_KEY')
+    if not api_key:
+        return None
+    try:
+        resp = requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={
+                'model': 'llama-3.3-70b-versatile',
+                'messages': [{'role': 'user', 'content': prompt}],
+                'temperature': 0.3,
+                'max_tokens': 300,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        print(f"  [!] Groq 市場總結失敗: {e}")
+        return None
+
+
+def _call_gemini(prompt: str) -> str | None:
+    """呼叫 Gemini API 生成文字（Groq 備援）"""
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return None
+    try:
+        resp = requests.post(
+            f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}',
+            headers={'Content-Type': 'application/json'},
+            json={'contents': [{'parts': [{'text': prompt}]}]},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+    except Exception as e:
+        print(f"  [!] Gemini 市場總結失敗: {e}")
+        return None
+
+
+def _generate_ai_market_summary(mood, snapshots, strategies):
+    """
+    用 AI 生成一句話市場總結 + 技術面情境描述。
+    Groq 優先 → Gemini 備援 → 規則 fallback。
+    """
+    # 構建 prompt 素材
+    bull_pct = 0
+    if mood and mood.get('total', 0) > 0:
+        bull_pct = round(mood.get('bullish', 0) / mood['total'] * 100)
+    bear_pct = 0
+    if mood and mood.get('total', 0) > 0:
+        bear_pct = round(mood.get('bearish', 0) / mood['total'] * 100)
+
+    tech_text = '\n'.join(_describe_technical(snapshots)) if snapshots else '無技術面數據'
+    strat_text = ', '.join(
+        f"{s['symbol']}最佳策略:{s['strategy']}(報酬{s['return']:+.1f}%)"
+        for s in (strategies or [])
+    ) or '無策略數據'
+
+    prompt = f"""你是一位專業的金融市場分析師。根據以下今天的數據，用繁體中文：
+1. 先用「一句話」總結今天市場狀況（30字以內，開頭不要有標點）
+2. 再用 2-3 句話描述技術面情境：目前是趨勢延續、趨勢轉弱、情緒性修正、還是觸底反彈？
+
+數據：
+- 新聞情緒：看多 {bull_pct}% / 看空 {bear_pct}%（共 {mood.get('total', 0) if mood else 0} 則）
+- 技術面：
+{tech_text}
+- 策略信號：{strat_text}
+
+格式：
+一句話總結：<你的總結>
+技術面情境：<你的描述>
+
+注意：直接回答，不要加多餘的前綴或解釋。"""
+
+    # 嘗試 Groq → Gemini → 規則
+    ai_text = _call_groq(prompt)
+    if not ai_text:
+        ai_text = _call_gemini(prompt)
+
+    if ai_text:
+        return ai_text
+
+    # fallback: 規則生成
+    if bull_pct > 60:
+        summary = "市場情緒偏多，多數新聞釋出正面訊號"
+    elif bear_pct > 60:
+        summary = "市場情緒偏空，負面消息主導"
+    else:
+        summary = "多空分歧，市場觀望氣氛濃厚"
+
+    tech_lines = _describe_technical(snapshots) if snapshots else ["• 無技術面數據"]
+    return f"一句話總結：{summary}\n技術面情境：\n" + '\n'.join(tech_lines)
 
 
 def get_conn():
@@ -170,6 +340,21 @@ def generate_report():
     report.append(f"📊 SBS 每日市場報告")
     report.append(f"📅 {now.strftime('%Y-%m-%d %H:%M')}")
     report.append("=" * 35)
+
+    # AI 市場總結（最前面）
+    try:
+        mood = get_mood_summary()
+        snapshots = _get_technical_snapshot()
+        strategies = get_best_strategies()
+        ai_summary = _generate_ai_market_summary(mood, snapshots, strategies)
+        if ai_summary:
+            report.append("\n🤖 AI 市場總結")
+            report.append("─" * 35)
+            for line in ai_summary.strip().split('\n'):
+                report.append(line)
+    except Exception:
+        traceback.print_exc()
+        report.append("\n🤖 AI 市場總結：生成失敗")
 
     # 市場行情
     markets = get_market_summary()
