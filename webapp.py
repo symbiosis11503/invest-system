@@ -10,6 +10,10 @@ from flask import Flask, jsonify, Response, send_file, render_template, send_fro
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "db/trades.db")
+
+# 載入 ai-hub 共用環境變數（含 Gemini API keys）
+from config import load_env
+load_env()
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), static_folder=os.path.join(BASE_DIR, 'static'))
 _START_TIME = time.time()
 
