@@ -1,0 +1,139 @@
+{
+  "symbol": "3008",
+  "timestamp": "2026-03-23T02:25:23.861334",
+  "name": {
+    "name_zh": "大立光",
+    "exchange": "TWSE",
+    "category": "台股"
+  },
+  "valuation": {
+    "per": 14.7,
+    "pbr": 1.66,
+    "dividend_yield": 3.4,
+    "date": "2026-03-23"
+  },
+  "eps": [
+    {
+      "year": 2025,
+      "quarter": 4,
+      "eps": 159.41,
+      "revenue": 61147888000.0,
+      "profit": 21560257000.0
+    }
+  ],
+  "annual_eps": 159.41,
+  "institutional": [
+    {
+      "date": "2026-03-20",
+      "foreign_net": 111319,
+      "trust_net": 0,
+      "dealer_net": -1540,
+      "total_net": 109779
+    },
+    {
+      "date": "2026-03-19",
+      "foreign_net": -103814,
+      "trust_net": 0,
+      "dealer_net": -31261,
+      "total_net": -135075
+    },
+    {
+      "date": "2026-03-18",
+      "foreign_net": -159055,
+      "trust_net": 0,
+      "dealer_net": 52439,
+      "total_net": -106616
+    },
+    {
+      "date": "2026-03-17",
+      "foreign_net": -52426,
+      "trust_net": 0,
+      "dealer_net": 29937,
+      "total_net": -22489
+    },
+    {
+      "date": "2026-03-16",
+      "foreign_net": -85750,
+      "trust_net": 0,
+      "dealer_net": -20362,
+      "total_net": -106112
+    }
+  ],
+  "foreign_buy_streak": {
+    "days": 1,
+    "total": 111319
+  },
+  "margin": {
+    "margin_balance": 738,
+    "short_balance": 1,
+    "date": "2026-03-20"
+  },
+  "revenue": [
+    {
+      "date": "2026-03-01",
+      "revenue": 4613227000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    },
+    {
+      "date": "2026-02-01",
+      "revenue": 5498867000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    },
+    {
+      "date": "2026-02",
+      "revenue": 4613227000.0,
+      "revenue_yoy": -2.6065659325115504,
+      "revenue_mom": -16.105863262377504
+    },
+    {
+      "date": "2026-01-01",
+      "revenue": 5617058000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    },
+    {
+      "date": "2025-12-01",
+      "revenue": 5302915000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    },
+    {
+      "date": "2025-11-01",
+      "revenue": 6260810000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    }
+  ],
+  "revenue_growth_streak": 0,
+  "recent_prices": [
+    {
+      "date": "2026-03-20",
+      "close": 2355.0,
+      "volume": 841670
+    },
+    {
+      "date": "2026-03-19",
+      "close": 2320.0,
+      "volume": 870561
+    },
+    {
+      "date": "2026-03-18",
+      "close": 2440.0,
+      "volume": 1068852
+    },
+    {
+      "date": "2026-03-17",
+      "close": 2400.0,
+      "volume": 793168
+    },
+    {
+      "date": "2026-03-16",
+      "close": 2305.0,
+      "volume": 458199
+    }
+  ],
+  "score": 6.5,
+  "summary": "【大立光 (3008)】評分: 6.5/10 (中性)\nPER: 14.7 | 殖利率: 3.4% | 年化EPS: 159.41\n外資連買 1 天"
+}

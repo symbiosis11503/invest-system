@@ -1,110 +1,154 @@
-# Invest System 投資策略系統
+# Invest System 台股 AI 投資分析系統
 
-> 開源量化投資工具集 — 資料收集、策略回測、市場情報、即時監控
+> 台灣第一個開源台股 AI 投資分析系統 — 849 萬筆資料、2,030 商品、AI 情緒分析、六頁深色儀表板
 
-## 功能
+## 特色
 
-### 資料收集
-- **台股** — 證交所 (TWSE) 上市個股歷史行情
-- **上櫃/興櫃** — 櫃買中心 (TPEx) 歷史行情
-- **台灣期貨** — 期交所 (TAIFEX) 全商品日行情（1998年起）
-- **國際市場** — yfinance 整合（黃金、原油、加密貨幣、美股指數等）
-- **批次下載** — 一鍵下載 28 年歷史資料
+- **全量台股覆蓋** — 上市 + 上櫃 + 興櫃 + ETF 共 1,963 支，加 67 國際商品
+- **849 萬筆歷史資料** — 台股/台期/美股/黃金/原油/加密/外匯
+- **AI 新聞情緒分析** — 7,500+ 則新聞，Groq + Gemini 雙引擎
+- **TWSE OpenAPI 整合** — PER/PBR/殖利率/季度 EPS/月營收，每日自動更新
+- **籌碼分析** — 法人買賣超、融資融券、營收連成長、籌碼洗淨訊號
+- **六頁深色主題 UI** — 儀表板/策略監控/市場情報/回測/群組監聽/籌碼分析
+- **零成本** — 所有資料來源免費
 
-### 策略引擎
-- **可插拔策略框架** — 繼承 BaseStrategy 即可新增策略
-- **內建 5 個策略**：均線交叉、RSI、布林通道、MACD、突破策略
-- **Backtrader 回測** — 完整績效報告（報酬率、Sharpe、最大回撤、勝率）
-- **SQLite 儲存** — 所有交易紀錄和回測結果永久保存
+## 截圖
 
-### 市場情報
-- **RSS 新聞收集** — Google News、自由時報等即時財經新聞
-- **AI 情感分析** — Groq API 秒級分析（利多/利空/中性）
-- **市場情緒指標** — 即時計算 bullish/bearish 比例
-- **每分鐘更新** — Daemon 模式自動收集分析
-
-### Web 儀表板
-- **策略監控** — 回測結果比較、買賣點標記
-- **K 線圖** — Canvas 繪製，支援縮放拖曳
-- **手機友善** — 深色主題 RWD 介面
-- **API 端點** — JSON API 供前端或 PWA 使用
+> 儀表板：市場總覽、法人 Top Buy/Sell、策略排行、情緒分析
 
 ## 快速開始
 
 ```bash
 # 建立虛擬環境
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+source .venv/bin/activate
+pip install -r requirements.txt
 
-# 下載資料
-.venv/bin/python data/fetcher.py --taifex TX MTX
-.venv/bin/python data/fetcher.py --twse 2330 2317
-.venv/bin/python data/fetcher.py --yf GC=F BTC-USD
+# 下載全量台股資料（約 30 分鐘）
+python batch_download_all.py
 
-# 回測
-.venv/bin/python backtest.py ma_cross --symbol GC=F --source yfinance --period 2y
-.venv/bin/python backtest.py rsi --symbol 2330.TW --source yfinance
+# 抓取 TWSE 開放資料（PER/EPS/月營收）
+python data/twse_fetcher.py
 
-# 市場情報
-.venv/bin/python intelligence.py              # 單次收集+分析
-.venv/bin/python intelligence.py --daemon     # 每分鐘自動收集
-.venv/bin/python intelligence.py --mood       # 查看市場情緒
+# 收集新聞 + AI 分析
+python intelligence.py
+python intelligence.py --mood   # 查看市場情緒
 
-# Web 儀表板
-.venv/bin/python webapp.py                    # http://localhost:18900
+# 啟動 Web 儀表板
+python webapp.py                # http://localhost:18900
 ```
 
-## 策略回測範例
+## 資料規模
 
-黃金期貨 (GC=F) 2 年回測：
+| 類別 | 數量 | 說明 |
+|------|------|------|
+| 台股 + ETF | 1,963 支 | 上市/上櫃/興櫃全覆蓋 |
+| 國際商品 | 67 個 | 期貨/指數/外匯/加密 |
+| 歷史行情 | 849 萬筆 | 1998 年起 |
+| AI 分析新聞 | 7,500+ 則 | Groq + Gemini |
+| PER/PBR | 1,067 檔 | TWSE OpenAPI 每日更新 |
+| 季度 EPS | 936 檔 | 最新 2025Q4 |
+| 月營收 | 1,069 檔 | YoY/MoM |
+| 法人籌碼 | 9,597 筆 | 外資/投信/自營 |
 
-| 策略 | 報酬率 | 最大回撤 | Sharpe | 勝率 |
-|------|--------|---------|--------|------|
-| MA交叉 | +37.89% | 12.06% | 0.94 | 56% |
-| 突破 | +21.28% | 11.96% | 0.61 | 46% |
-| MACD | +16.54% | 11.84% | 0.53 | 62% |
-| 布林通道 | +4.75% | 4.18% | 0.30 | 100% |
+## 六頁儀表板
+
+| 頁面 | 路徑 | 功能 |
+|------|------|------|
+| 儀表板 | `/` | 市場總覽、法人 Top Buy/Sell、情緒環、策略排行 |
+| 策略監控 | `/trading` | K 線圖、即時報價、技術指標 |
+| 市場情報 | `/intelligence` | AI 情緒分析、看多/看空/中性過濾 |
+| 回測結果 | `/backtests` | 策略績效比較、排序篩選 |
+| 群組監聽 | `/messages` | Telegram 群組訊息監控 |
+| 籌碼分析 | `/chipdata` | 法人/融資券/月營收/EPS/本益比 |
+
+## 策略引擎
+
+內建 6 個策略，可自訂新增：
+
+| 策略 | 說明 | 最佳績效 |
+|------|------|---------|
+| ma_cross | 均線交叉 (MA5/MA20) | 黃金 +76.7% |
+| rsi | RSI 超買超賣 | |
+| bollinger | 布林通道 | |
+| macd | MACD 交叉 | |
+| breakout | Donchian 突破 | 黃金 +62.1% |
+| ensemble | 組合投票 | +80.7% |
+
+```bash
+# 回測範例
+python backtest.py ma_cross --symbol GC=F --source yfinance --period 2y
+python backtest.py ensemble --symbol 2330.TW --source yfinance
+```
+
+## 智慧指標
+
+| 指標 | 說明 | 來源 |
+|------|------|------|
+| 年化 EPS | 近 4 季 EPS 合計 | TWSE OpenAPI |
+| 法人連買天數 | 三大法人連續淨買超 | FinMind |
+| 營收連成長月數 | 月營收 YoY 連續正成長 | TWSE OpenAPI |
+| 籌碼洗淨訊號 | 融資遞減 + 股價上漲 | FinMind + 行情 |
+| VIX 恐慌篩選 | VIX>30 時找低 PER 高殖利率 | yfinance + TWSE |
+
+## API 端點
+
+| 端點 | 說明 |
+|------|------|
+| `GET /api/market/<symbol>` | 個股行情 |
+| `GET /api/backtests` | 回測結果 |
+| `GET /api/intelligence` | AI 分析新聞 |
+| `GET /api/mood` | 市場情緒 |
+| `GET /api/chipdata/<symbol>` | 個股籌碼面 |
+| `GET /api/top-flow` | 法人買賣超 Top 10 |
+| `GET /api/eps-leaders` | EPS 排行 Top 20 |
+| `GET /api/screener/vix-panic` | VIX 恐慌篩選 |
+| `GET /health` | 系統健康檢查 |
+
+## 資料來源（全部免費）
+
+| 來源 | 資料 | 方式 |
+|------|------|------|
+| TWSE OpenAPI | PER/PBR/殖利率/EPS/月營收/公告 | REST JSON |
+| 證交所 TWSE | 上市個股行情 | yfinance |
+| 櫃買中心 TPEx | 上櫃/興櫃行情 | yfinance |
+| 期交所 TAIFEX | 台灣期貨 | 官網 CSV |
+| yfinance | 國際市場 | Python API |
+| FinMind | 法人/融資券/營收 | REST API |
+| Google News | 財經新聞 RSS | RSS XML |
+| Groq + Gemini | AI 情緒分析 | API |
 
 ## 技術架構
 
 ```
 invest-system/
-├── config.py              # 設定
-├── backtest.py            # 回測引擎 CLI
-├── intelligence.py        # 市場情報收集 + AI 分析
-├── webapp.py              # Flask Web App
-├── trading.html           # 策略監控看盤介面
-├── tg_monitor.py          # Telegram 群組監聽
-├── batch_download_all.py  # 全資料批次下載
+├── webapp.py              # Flask Web App (port 18900)
+├── backtest.py            # Backtrader 回測引擎
+├── intelligence.py        # 新聞收集 + AI 分析
+├── daily_report.py        # 每日市場報告
 ├── data/
-│   └── fetcher.py         # 資料下載器（TWSE/TPEx/TAIFEX/yfinance）
-├── db/
-│   └── store.py           # SQLite 儲存層
-├── strategies/
-│   ├── base.py            # 策略基類
-│   ├── ma_cross.py        # 均線交叉
-│   ├── rsi.py             # RSI
-│   ├── bollinger.py       # 布林通道
-│   ├── macd.py            # MACD
-│   └── breakout.py        # 突破策略
-└── utils/
+│   ├── fetcher.py         # 台股/期貨/國際下載器
+│   ├── finmind.py         # FinMind 籌碼下載器
+│   └── twse_fetcher.py    # TWSE OpenAPI (PER/EPS/營收)
+├── templates/             # 六頁 HTML 儀表板
+├── static/
+│   └── invest-base.css    # 設計系統
+├── strategies/            # 6 個回測策略
+├── scripts/
+│   └── daily_update.sh    # 每日自動更新排程
+└── db/trades.db           # SQLite 資料庫
 ```
 
-## 資料來源
+## 自動化
 
-| 來源 | 資料 | 費用 |
-|------|------|------|
-| TWSE | 台股上市個股 | 免費 |
-| TPEx | 上櫃/興櫃 | 免費 |
-| TAIFEX | 台灣期貨 | 免費 |
-| yfinance | 國際市場 | 免費 |
-| Google News RSS | 財經新聞 | 免費 |
-| Groq API | AI 情感分析 | 免費 |
+- **每日 14:35** — launchd 自動更新行情 + 籌碼 + TWSE 指標 + 新聞
+- **webapp** — launchd 服務，開機自啟 + 掛掉重啟
 
 ## 環境需求
 
 - Python 3.10+
-- 依賴：backtrader, yfinance, pandas, numpy, flask, requests, telethon
+- macOS / Linux
+- 依賴：flask, backtrader, yfinance, pandas, numpy, requests
 
 ## License
 
@@ -112,4 +156,4 @@ MIT
 
 ---
 
-Built with Symbiosis AI System
+Built with [Symbiosis](https://github.com/symbiosis11503) — AI 與人的智慧共同體

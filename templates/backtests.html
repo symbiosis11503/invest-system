@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>回測結果 — Symbiosis Invest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+.bt-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.sort-row { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+.sort-row label { font-size: 0.75em; color: var(--text-tertiary); }
+.sort-row select { padding: 6px 12px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-btn); color: var(--text-primary); font-size: 0.82em; font-family: var(--font-sans); }
+.data-table { overflow-x: auto; }
+.data-table td.ret { font-weight: 600; }
+@media (max-width: 900px) { .bt-summary { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .bt-summary { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/backtests" class="nav-link active">回測結果</a>
+    <a href="/messages" class="nav-link">群組監聽</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+    <a href="/screener" class="nav-link">智慧篩選</a>
+  </nav>
+</header>
+
+<div class="page-content">
+  <div class="bt-summary" id="bt-summary">
+    <div class="metric-card"><div class="label">總回測</div><div class="value" id="bt-total">--</div></div>
+    <div class="metric-card"><div class="label">最佳報酬</div><div class="value change up" id="bt-best">--</div></div>
+    <div class="metric-card"><div class="label">平均報酬</div><div class="value" id="bt-avg">--</div></div>
+    <div class="metric-card"><div class="label">勝率 >0%</div><div class="value" id="bt-winrate">--</div></div>
+  </div>
+
+  <div class="sort-row">
+    <label>排序：</label>
+    <select id="sort-by" onchange="sortAndRender()">
+      <option value="return_desc">報酬率 ↓</option>
+      <option value="return_asc">報酬率 ↑</option>
+      <option value="sharpe_desc">Sharpe ↓</option>
+      <option value="dd_asc">回撤 ↑ (最小)</option>
+      <option value="time_desc">時間 ↓</option>
+    </select>
+    <label>策略：</label>
+    <select id="filter-strat" onchange="sortAndRender()">
+      <option value="all">全部</option>
+    </select>
+  </div>
+
+  <div class="card" style="overflow-x:auto">
+    <table class="data-table" id="bt-table">
+      <thead>
+        <tr><th>策略</th><th>商品</th><th>報酬率</th><th>最大回撤</th><th>Sharpe</th><th>勝率</th><th>交易次數</th><th>時間</th></tr>
+      </thead>
+      <tbody id="bt-tbody">
+        <tr><td colspan="8" style="text-align:center;color:var(--text-tertiary)">載入中...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<nav class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item"><span class="tab-icon">📊</span>儀表板</a>
+    <a href="/trading" class="tab-item"><span class="tab-icon">📈</span>監控</a>
+    <a href="/intelligence" class="tab-item"><span class="tab-icon">📰</span>情報</a>
+    <a href="/backtests" class="tab-item active"><span class="tab-icon">🏆</span>回測</a>
+    <a href="/chipdata" class="tab-item"><span class="tab-icon">🏦</span>籌碼</a>
+  </div>
+</nav>
+
+<script>
+function escapeHtml(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+let allBt = [];
+let names = {};
+
+async function loadBacktests() {
+  try {
+    [allBt, names] = await Promise.all([
+      fetch('/api/backtests').then(r => r.json()),
+      fetch('/api/symbol-names').then(r => r.json()),
+    ]);
+
+    // Summary
+    document.getElementById('bt-total').textContent = allBt.length;
+    const returns = allBt.map(b => b.total_return || 0);
+    const best = returns.length ? Math.max(...returns) : 0;
+    const avg = returns.length ? returns.reduce((a,b)=>a+b,0) / returns.length : 0;
+    const winrate = (returns.filter(r => r > 0).length / returns.length * 100).toFixed(0);
+    document.getElementById('bt-best').textContent = `+${best.toFixed(1)}%`;
+    document.getElementById('bt-avg').textContent = `${avg >= 0 ? '+' : ''}${avg.toFixed(1)}%`;
+    document.getElementById('bt-avg').className = `value change ${avg >= 0 ? 'up' : 'down'}`;
+    document.getElementById('bt-winrate').textContent = `${winrate}%`;
+
+    // Strategy filter
+    const strats = [...new Set(allBt.map(b => b.strategy))];
+    const sel = document.getElementById('filter-strat');
+    strats.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+
+    sortAndRender();
+  } catch(e) { console.error(e); }
+}
+
+function sortAndRender() {
+  const sortBy = document.getElementById('sort-by').value;
+  const filterStrat = document.getElementById('filter-strat').value;
+
+  let data = filterStrat === 'all' ? [...allBt] : allBt.filter(b => b.strategy === filterStrat);
+
+  if (sortBy === 'return_desc') data.sort((a,b) => (b.total_return||0) - (a.total_return||0));
+  else if (sortBy === 'return_asc') data.sort((a,b) => (a.total_return||0) - (b.total_return||0));
+  else if (sortBy === 'sharpe_desc') data.sort((a,b) => (b.sharpe_ratio||0) - (a.sharpe||0));
+  else if (sortBy === 'dd_asc') data.sort((a,b) => (a.max_drawdown||0) - (b.max_drawdown||0));
+  else if (sortBy === 'time_desc') data.sort((a,b) => (b.ts||'').localeCompare(a.ts||''));
+
+  const tbody = document.getElementById('bt-tbody');
+  tbody.innerHTML = data.map(b => {
+    const ret = (b.total_return||0);
+    const retCls = ret >= 0 ? 'up' : 'down';
+    const dd = (b.max_drawdown||0);
+    const sym = names[b.symbol] || b.symbol;
+    return `<tr>
+      <td>${b.strategy}</td>
+      <td>${sym} <span style="color:var(--text-tertiary);font-size:.8em">${b.symbol}</span></td>
+      <td class="ret ${retCls}">${ret >= 0 ? '+' : ''}${ret.toFixed(1)}%</td>
+      <td style="color:var(--price-down)">${dd.toFixed(1)}%</td>
+      <td>${(b.sharpe_ratio||0).toFixed(2)}</td>
+      <td>${(b.win_rate||0).toFixed(0)}%</td>
+      <td>${b.total_trades||0}</td>
+      <td style="color:var(--text-tertiary);font-size:.8em">${(b.ts||'').slice(0,10)}</td>
+    </tr>`;
+  }).join('');
+}
+
+loadBacktests();
+</script>
+</body>
+</html>

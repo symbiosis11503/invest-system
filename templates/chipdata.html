@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>籌碼分析 — Symbiosis Invest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+.chip-header { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.chip-header select { padding: 8px 14px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius-btn); color: var(--text-primary); font-size: 0.88em; font-family: var(--font-sans); min-width: 200px; }
+.chip-header .stock-name { font-size: 1.2em; font-weight: 700; }
+
+.chip-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.chip-section .card-title { display: flex; justify-content: space-between; align-items: center; }
+
+.val-up { color: var(--price-up); }
+.val-down { color: var(--price-down); }
+
+@media (max-width: 900px) { .chip-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/backtests" class="nav-link">回測結果</a>
+    <a href="/messages" class="nav-link">群組監聽</a>
+    <a href="/chipdata" class="nav-link active">籌碼分析</a>
+  </nav>
+</header>
+
+<div class="page-content">
+  <div class="chip-header">
+    <select id="stock-select" onchange="loadChip(this.value)">
+      <option value="">選擇股票...</option>
+    </select>
+    <span class="stock-name" id="stock-name"></span>
+  </div>
+
+  <!-- Metrics -->
+  <div class="grid-6" style="margin-bottom:16px" id="metric-cards">
+    <div class="metric-card"><div class="label">本益比 P/E</div><div class="value" id="per-val" style="color:var(--accent-cyan)">--</div></div>
+    <div class="metric-card"><div class="label">股價淨值比 P/B</div><div class="value" id="pbr-val" style="color:var(--purple)">--</div></div>
+    <div class="metric-card"><div class="label">殖利率 %</div><div class="value" id="yield-val" style="color:var(--price-down)">--</div></div>
+    <div class="metric-card"><div class="label">法人連買</div><div class="value" id="consec-buy" style="color:var(--price-up)">--</div><div class="label">天</div></div>
+    <div class="metric-card"><div class="label">營收連成長</div><div class="value" id="consec-growth" style="color:var(--price-up)">--</div><div class="label">月</div></div>
+    <div class="metric-card"><div class="label">年化EPS</div><div class="value" id="annual-eps" style="color:var(--accent-cyan)">--</div></div>
+    <div class="metric-card"><div class="label">籌碼洗淨</div><div class="value" id="chip-clean" style="font-size:0.9em">--</div></div>
+  </div>
+
+  <div class="chip-grid">
+    <!-- Institutional -->
+    <div class="card chip-section">
+      <div class="card-title">三大法人買賣超</div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="inst-table">
+          <thead><tr><th>日期</th><th>外資</th><th>投信</th><th>自營</th><th>合計</th></tr></thead>
+          <tbody id="inst-tbody"><tr><td colspan="5" style="text-align:center;color:var(--text-tertiary)">選擇股票</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Margin -->
+    <div class="card chip-section">
+      <div class="card-title">融資融券</div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="margin-table">
+          <thead><tr><th>日期</th><th>融資餘額</th><th>融券餘額</th></tr></thead>
+          <tbody id="margin-tbody"><tr><td colspan="3" style="text-align:center;color:var(--text-tertiary)">選擇股票</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- EPS -->
+    <div class="card chip-section">
+      <div class="card-title">季度 EPS</div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="eps-table">
+          <thead><tr><th>期間</th><th>EPS</th><th>營收(億)</th><th>淨利(億)</th></tr></thead>
+          <tbody id="eps-tbody"><tr><td colspan="4" style="text-align:center;color:var(--text-tertiary)">選擇股票</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Revenue -->
+    <div class="card chip-section">
+      <div class="card-title">月營收</div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="rev-table">
+          <thead><tr><th>月份</th><th>營收(億)</th><th>YoY %</th><th>MoM %</th></tr></thead>
+          <tbody id="rev-tbody"><tr><td colspan="4" style="text-align:center;color:var(--text-tertiary)">選擇股票</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item"><span class="tab-icon">📊</span>儀表板</a>
+    <a href="/trading" class="tab-item"><span class="tab-icon">📈</span>監控</a>
+    <a href="/intelligence" class="tab-item"><span class="tab-icon">📰</span>情報</a>
+    <a href="/backtests" class="tab-item"><span class="tab-icon">🏆</span>回測</a>
+    <a href="/chipdata" class="tab-item active"><span class="tab-icon">🏦</span>籌碼</a>
+  </div>
+</nav>
+
+<script>
+function escapeHtml(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+let names = {};
+
+async function init() {
+  try {
+    const [chips, nameData] = await Promise.all([
+      fetch('/api/chipdata').then(r => r.json()),
+      fetch('/api/symbol-names').then(r => r.json()),
+    ]);
+    names = nameData;
+    const sel = document.getElementById('stock-select');
+    const stockList = (chips || []).map(c => typeof c === 'string' ? c : c.symbol);
+    stockList.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s; o.textContent = `${s} ${names[s]||''}`;
+      sel.appendChild(o);
+    });
+    const path = location.pathname.split('/');
+    if (path.length > 2 && path[2]) { sel.value = path[2]; loadChip(path[2]); }
+    else if (stockList.length) { sel.value = stockList[0]; loadChip(stockList[0]); }
+  } catch {}
+}
+
+function fmt(n) { return n >= 0 ? `<span class="val-up">+${n.toLocaleString()}</span>` : `<span class="val-down">${n.toLocaleString()}</span>`; }
+
+async function loadChip(symbol) {
+  if (!symbol) return;
+  document.getElementById('stock-name').textContent = `${symbol} ${names[symbol]||''}`;
+  history.replaceState(null, '', `/chipdata/${symbol}`);
+
+  try {
+    const data = await (await fetch(`/api/chipdata/${symbol}`)).json();
+
+    // PER
+    if (data.per?.length) {
+      const p = data.per[0];
+      document.getElementById('per-val').textContent = p.per != null ? Number(p.per).toFixed(1) : '--';
+      document.getElementById('pbr-val').textContent = p.pbr != null ? Number(p.pbr).toFixed(2) : '--';
+      document.getElementById('yield-val').textContent = p.dividend_yield != null ? Number(p.dividend_yield).toFixed(2) + '%' : '--';
+    }
+
+    // New indicators
+    if (data.indicators) {
+      const ind = data.indicators;
+      document.getElementById('consec-buy').textContent = ind.consecutive_buy_days || 0;
+      document.getElementById('consec-growth').textContent = ind.consecutive_growth_months || 0;
+      const chipEl = document.getElementById('chip-clean');
+      chipEl.textContent = ind.chip_clean_signal ? '🟢 是' : '⚪ 否';
+      chipEl.style.color = ind.chip_clean_signal ? 'var(--price-down)' : 'var(--text-tertiary)';
+      const epsEl = document.getElementById('annual-eps');
+      if (ind.annual_eps != null) {
+        epsEl.textContent = ind.annual_eps.toFixed(2);
+        epsEl.style.color = ind.annual_eps >= 0 ? 'var(--price-up)' : 'var(--price-down)';
+      } else {
+        epsEl.textContent = '--';
+      }
+    }
+
+    // EPS
+    document.getElementById('eps-tbody').innerHTML = (data.eps||[]).slice(0,8).map(d => {
+      const rev = (d.revenue||0) / 100000000;
+      const profit = (d.profit||0) / 100000000;
+      const epsClass = (d.eps||0) >= 0 ? 'val-up' : 'val-down';
+      return `<tr><td>${escapeHtml(d.date||'')}</td><td class="${epsClass}" style="font-weight:600">${d.eps != null ? Number(d.eps).toFixed(2) : '--'}</td><td>${rev.toFixed(1)}</td><td class="${profit>=0?'val-up':'val-down'}">${profit.toFixed(1)}</td></tr>`;
+    }).join('') || '<tr><td colspan="4" style="color:var(--text-tertiary)">無資料</td></tr>';
+
+    // Institutional
+    document.getElementById('inst-tbody').innerHTML = (data.institutional||[]).slice(0,20).map(d => {
+      const total = (d.foreign_net||0) + (d.trust_net||0) + (d.dealer_net||0);
+      return `<tr><td>${(d.date||'').slice(5)}</td><td>${fmt(d.foreign_net||0)}</td><td>${fmt(d.trust_net||0)}</td><td>${fmt(d.dealer_net||0)}</td><td style="font-weight:600">${fmt(total)}</td></tr>`;
+    }).join('') || '<tr><td colspan="5" style="color:var(--text-tertiary)">無資料</td></tr>';
+
+    // Margin
+    document.getElementById('margin-tbody').innerHTML = (data.margin||[]).slice(0,20).map(d =>
+      `<tr><td>${(d.date||'').slice(5)}</td><td style="color:var(--accent-cyan)">${(d.margin_balance||0).toLocaleString()}</td><td style="color:var(--orange)">${(d.short_balance||0).toLocaleString()}</td></tr>`
+    ).join('') || '<tr><td colspan="3" style="color:var(--text-tertiary)">無資料</td></tr>';
+
+    // Revenue
+    document.getElementById('rev-tbody').innerHTML = (data.revenue||[]).slice(0,12).map(d => {
+      const rev = (d.revenue||0) / 100000000;
+      const yoy = d.revenue_yoy != null ? Number(d.revenue_yoy).toFixed(1) : '0';
+      const mom = d.revenue_mom != null ? Number(d.revenue_mom).toFixed(1) : '0';
+      return `<tr><td>${escapeHtml(d.date||'')}</td><td>${rev.toFixed(2)}</td><td class="${yoy>=0?'val-up':'val-down'}">${yoy}%</td><td class="${mom>=0?'val-up':'val-down'}">${mom}%</td></tr>`;
+    }).join('') || '<tr><td colspan="4" style="color:var(--text-tertiary)">無資料</td></tr>';
+  } catch {}
+}
+
+init();
+</script>
+</body>
+</html>

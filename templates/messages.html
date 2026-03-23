@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>群組監聽 — Symbiosis Invest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+.msg-layout { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
+.group-sidebar { position: sticky; top: 72px; }
+.group-list { list-style: none; }
+.group-item { padding: 10px 14px; border-radius: var(--radius-btn); cursor: pointer; font-size: 0.82em; margin-bottom: 2px; transition: var(--transition); display: flex; justify-content: space-between; align-items: center; }
+.group-item:hover { background: rgba(255,255,255,0.05); }
+.group-item.active { background: rgba(99,102,241,0.1); color: var(--accent-indigo); }
+.group-item .count { font-size: 0.7em; font-family: var(--font-mono); color: var(--text-tertiary); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: var(--radius-badge); }
+
+.msg-stream { max-height: calc(100vh - 160px); overflow-y: auto; }
+.msg-stream::-webkit-scrollbar { width: 4px; }
+.msg-stream::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.msg-bubble { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.msg-bubble:hover { background: rgba(255,255,255,0.015); }
+.msg-header { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.msg-sender { font-weight: 600; font-size: 0.82em; }
+.msg-group { font-size: 0.65em; padding: 2px 6px; border-radius: var(--radius-badge); background: rgba(99,102,241,0.1); color: var(--accent-indigo); }
+.msg-time { font-size: 0.65em; color: var(--text-tertiary); margin-left: auto; font-family: var(--font-mono); }
+.msg-text { font-size: 0.85em; color: var(--text-secondary); line-height: 1.6; word-break: break-word; }
+
+@media (max-width: 900px) {
+  .msg-layout { grid-template-columns: 1fr; }
+  .group-sidebar { position: static; }
+  .group-list { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 8px; }
+  .group-item { white-space: nowrap; flex-shrink: 0; }
+}
+</style>
+</head>
+<body>
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/backtests" class="nav-link">回測結果</a>
+    <a href="/messages" class="nav-link active">群組監聽</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+    <a href="/screener" class="nav-link">智慧篩選</a>
+  </nav>
+</header>
+
+<div class="page-content">
+  <div class="grid-3" style="margin-bottom:16px" id="msg-stats">
+    <div class="metric-card"><div class="label">總訊息</div><div class="value" id="stat-total">--</div></div>
+    <div class="metric-card"><div class="label">活躍群組</div><div class="value" id="stat-groups">--</div></div>
+    <div class="metric-card"><div class="label">今日訊息</div><div class="value" id="stat-today">--</div></div>
+  </div>
+
+  <div class="msg-layout">
+    <div class="group-sidebar">
+      <div class="card">
+        <div class="card-title">群組</div>
+        <ul class="group-list" id="group-list">
+          <li class="group-item active" onclick="filterGroup('all',this)">全部</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="msg-stream" id="msg-stream">
+        <div class="skeleton" style="height:400px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item"><span class="tab-icon">📊</span>儀表板</a>
+    <a href="/trading" class="tab-item"><span class="tab-icon">📈</span>監控</a>
+    <a href="/intelligence" class="tab-item"><span class="tab-icon">📰</span>情報</a>
+    <a href="/backtests" class="tab-item"><span class="tab-icon">🏆</span>回測</a>
+    <a href="/chipdata" class="tab-item"><span class="tab-icon">🏦</span>籌碼</a>
+  </div>
+</nav>
+
+<script>
+function escapeHtml(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+let allMsgs = [];
+
+async function loadMessages() {
+  try {
+    const [stats, msgs] = await Promise.all([
+      fetch('/api/tg-stats').then(r => r.json()),
+      fetch('/api/tg-messages').then(r => r.json()),
+    ]);
+    document.getElementById('stat-total').textContent = (stats.total||0).toLocaleString();
+    document.getElementById('stat-groups').textContent = stats.groups?.length || 0;
+    document.getElementById('stat-today').textContent = stats.today || 0;
+
+    // Group list
+    const groupList = document.getElementById('group-list');
+    (stats.groups || []).forEach(g => {
+      const li = document.createElement('li');
+      li.className = 'group-item';
+      li.onclick = () => filterGroup(g.group_name, li);
+      li.innerHTML = `${g.group_name} <span class="count">${g.msg_count||''}</span>`;
+      groupList.appendChild(li);
+    });
+
+    allMsgs = msgs;
+    renderMessages(allMsgs);
+  } catch {}
+}
+
+function renderMessages(msgs) {
+  const stream = document.getElementById('msg-stream');
+  if (!msgs.length) { stream.innerHTML = '<div style="text-align:center;color:var(--text-tertiary);padding:40px">暫無訊息</div>'; return; }
+  stream.innerHTML = msgs.map(m => `<div class="msg-bubble" data-group="${m.group_name||''}">
+    <div class="msg-header">
+      <span class="msg-sender">${m.sender_name||'匿名'}</span>
+      <span class="msg-group">${m.group_name||''}</span>
+      <span class="msg-time">${(m.ts||'').slice(0,16)}</span>
+    </div>
+    <div class="msg-text">${(m.message_text||'').replace(/</g,'&lt;')}</div>
+  </div>`).join('');
+}
+
+function filterGroup(name, el) {
+  document.querySelectorAll('.group-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  if (name === 'all') renderMessages(allMsgs);
+  else renderMessages(allMsgs.filter(m => (m.group_name||'') === name));
+}
+
+loadMessages();
+setInterval(async () => {
+  try {
+    allMsgs = await (await fetch('/api/tg-messages')).json();
+    const activeGroup = document.querySelector('.group-item.active')?.textContent?.trim();
+    if (!activeGroup || activeGroup === '全部') renderMessages(allMsgs);
+    else renderMessages(allMsgs.filter(m => (m.group_name||'') === activeGroup));
+  } catch {}
+}, 30000);
+</script>
+</body>
+</html>

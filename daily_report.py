@@ -31,12 +31,18 @@ def get_market_summary():
     """取得各市場最新行情"""
     conn = get_conn()
     symbols = {
-        'GC=F': '黃金',
-        '^GSPC': 'S&P500',
         '^TWII': '台灣加權',
+        '^GSPC': 'S&P500',
+        '^IXIC': 'NASDAQ',
+        '^N225': '日經225',
+        '^HSI': '恆生',
+        'GC=F': '黃金',
+        'CL=F': '原油(WTI)',
+        'NG=F': '天然氣',
+        'HG=F': '銅',
         'BTC-USD': '比特幣',
-        'CL=F': '原油',
         'USDTWD=X': '美元/台幣',
+        'ZB=F': '30年美債',
     }
 
     results = []

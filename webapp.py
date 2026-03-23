@@ -3,17 +3,66 @@ import sqlite3
 import json
 import os
 from datetime import datetime, timedelta
-from flask import Flask, jsonify, Response, send_file
+from flask import Flask, jsonify, Response, send_file, render_template, send_from_directory, request
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "db/trades.db")
-app = Flask(__name__)
+app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), static_folder=os.path.join(BASE_DIR, 'static'))
 
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def init_sim_tables():
+    """建立模擬交易相關表（如果不存在）"""
+    conn = get_conn()
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS sim_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            name_zh TEXT,
+            action TEXT NOT NULL,
+            order_type TEXT DEFAULT 'limit',
+            price REAL,
+            quantity INTEGER NOT NULL,
+            status TEXT DEFAULT 'pending',
+            filled_price REAL,
+            filled_at TEXT,
+            strategy TEXT,
+            note TEXT,
+            created_at TEXT DEFAULT (datetime('now', 'localtime')),
+            updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS sim_portfolio (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL UNIQUE,
+            name_zh TEXT,
+            avg_price REAL NOT NULL,
+            quantity INTEGER NOT NULL,
+            current_price REAL,
+            unrealized_pnl REAL,
+            updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS sim_account (
+            id INTEGER PRIMARY KEY,
+            cash REAL DEFAULT 1000000,
+            total_value REAL DEFAULT 1000000,
+            realized_pnl REAL DEFAULT 0,
+            updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+        );
+    """)
+    # 確保帳戶有初始記錄
+    existing = conn.execute("SELECT id FROM sim_account WHERE id=1").fetchone()
+    if not existing:
+        conn.execute("INSERT INTO sim_account (id, cash, total_value, realized_pnl) VALUES (1, 1000000, 1000000, 0)")
+    conn.commit()
+    conn.close()
+
+
+init_sim_tables()
 
 
 def rows_to_dicts(rows):
@@ -53,11 +102,22 @@ def api_trades():
 def api_symbols():
     conn = get_conn()
     rows = conn.execute("""
-        SELECT symbol, COUNT(*) as count, MIN(date) as min_date, MAX(date) as max_date
-        FROM market_data GROUP BY symbol ORDER BY symbol
+        SELECT m.symbol, COUNT(*) as count, MIN(m.date) as min_date, MAX(m.date) as max_date,
+               COALESCE(sn.name_zh, m.symbol) as name_zh, sn.exchange, sn.category
+        FROM market_data m
+        LEFT JOIN symbol_names sn ON sn.symbol = m.symbol
+        GROUP BY m.symbol ORDER BY m.symbol
     """).fetchall()
     conn.close()
     return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/symbol-names")
+def api_symbol_names():
+    conn = get_conn()
+    rows = conn.execute("SELECT symbol, name_zh, name_en, exchange, category FROM symbol_names ORDER BY symbol").fetchall()
+    conn.close()
+    return jsonify({r['symbol']: r['name_zh'] for r in rows})
 
 
 @app.route("/api/intelligence")
@@ -217,6 +277,10 @@ def page(title, body):
 
 @app.route("/")
 def index():
+    return render_template('index.html')
+
+
+def index_old():
     conn = get_conn()
 
     # 回測摘要
@@ -351,6 +415,10 @@ def index():
 
 @app.route("/backtests")
 def backtests():
+    return render_template('backtests.html')
+
+
+def backtests_old():
     conn = get_conn()
     rows = conn.execute("SELECT * FROM backtest_results ORDER BY ts DESC").fetchall()
     conn.close()
@@ -495,6 +563,10 @@ def market(symbol):
 
 @app.route("/intelligence")
 def intelligence():
+    return render_template('intelligence.html')
+
+
+def intelligence_old():
     conn = get_conn()
 
     # 情緒摘要（24h）
@@ -612,6 +684,10 @@ def intelligence():
 
 @app.route("/messages")
 def messages():
+    return render_template('messages.html')
+
+
+def messages_old():
     conn = get_conn()
     total = conn.execute("SELECT COUNT(*) FROM tg_messages").fetchone()[0]
     today = datetime.now().strftime("%Y-%m-%d")
@@ -701,6 +777,49 @@ def api_chipdata(symbol):
     revenue = conn.execute(
         "SELECT * FROM tw_revenue WHERE symbol=? ORDER BY date DESC LIMIT 24",
         (symbol,)).fetchall()
+    eps = conn.execute(
+        "SELECT * FROM tw_eps WHERE symbol=? ORDER BY year DESC, quarter DESC LIMIT 8",
+        (symbol,)).fetchall()
+    # 計算新指標
+    # 1. 法人連續買超天數
+    consecutive_buy = 0
+    for row in inst:
+        if row["total_net"] and row["total_net"] > 0:
+            consecutive_buy += 1
+        else:
+            break
+
+    # 2. 營收連續成長月數
+    consecutive_growth = 0
+    for row in revenue:
+        if row["revenue_yoy"] and row["revenue_yoy"] > 0:
+            consecutive_growth += 1
+        else:
+            break
+
+    # 3. 融資減少（籌碼洗淨訊號）+ 股價上漲
+    chip_clean = False
+    if len(margin) >= 5:
+        # 近5日融資餘額持續減少
+        mb = [r["margin_balance"] for r in margin[:5] if r["margin_balance"]]
+        if len(mb) >= 2:
+            margin_decreasing = all(mb[i] <= mb[i+1] for i in range(len(mb)-1))
+            # 加上股價是否上漲
+            price_rows = conn.execute(
+                "SELECT close FROM market_data WHERE symbol=? ORDER BY date DESC LIMIT 5",
+                (symbol,)).fetchall()
+            price_up = False
+            if len(price_rows) >= 2:
+                price_up = (price_rows[0]["close"] or 0) > (price_rows[-1]["close"] or 0)
+            chip_clean = margin_decreasing and price_up
+
+    # 4. 近4季 EPS 合計（年化 EPS）
+    annual_eps = None
+    if eps:
+        recent_eps = [r["eps"] for r in eps[:4] if r["eps"] is not None]
+        if recent_eps:
+            annual_eps = round(sum(recent_eps), 2)
+
     conn.close()
     return jsonify({
         "symbol": symbol,
@@ -708,7 +827,190 @@ def api_chipdata(symbol):
         "margin": rows_to_dicts(margin),
         "per": rows_to_dicts(per),
         "revenue": rows_to_dicts(revenue),
+        "eps": rows_to_dicts(eps),
+        "indicators": {
+            "consecutive_buy_days": consecutive_buy,
+            "consecutive_growth_months": consecutive_growth,
+            "chip_clean_signal": chip_clean,
+            "annual_eps": annual_eps,
+        },
     })
+
+
+@app.route("/api/screener/vix-panic")
+def api_vix_screener():
+    """VIX 恐慌篩選：VIX > 30 時找低 PER 高殖利率股"""
+    conn = get_conn()
+    vix = conn.execute("SELECT close FROM market_data WHERE symbol='^VIX' ORDER BY date DESC LIMIT 1").fetchone()
+    vix_val = vix["close"] if vix else 0
+
+    results = []
+    if vix_val > 30:
+        # Find stocks with low PER and high dividend yield
+        stocks = conn.execute("""
+            SELECT p.symbol, p.per, p.pbr, p.dividend_yield, p.date,
+                   n.name_zh
+            FROM tw_per p
+            LEFT JOIN symbol_names n ON n.symbol = p.symbol
+            WHERE p.date = (SELECT MAX(date) FROM tw_per WHERE symbol = p.symbol)
+            AND CAST(p.per AS REAL) > 0 AND CAST(p.per AS REAL) < 15
+            AND CAST(p.dividend_yield AS REAL) > 3
+            ORDER BY CAST(p.dividend_yield AS REAL) DESC
+            LIMIT 20
+        """).fetchall()
+        results = rows_to_dicts(stocks)
+
+    conn.close()
+    return jsonify({"vix": vix_val, "panic_mode": vix_val > 30, "stocks": results})
+
+
+@app.route("/api/top-flow")
+def api_top_flow():
+    """法人買賣超 Top 10（最新日期，按淨買超絕對值排序）"""
+    conn = get_conn()
+    latest_date = conn.execute("SELECT MAX(date) FROM tw_institutional").fetchone()[0]
+    if not latest_date:
+        conn.close()
+        return jsonify({"date": None, "top_buy": [], "top_sell": []})
+
+    top_buy = conn.execute("""
+        SELECT i.symbol, i.foreign_net, i.trust_net, i.dealer_net, i.total_net, i.date,
+               COALESCE(n.name_zh, i.symbol) as name_zh
+        FROM tw_institutional i
+        LEFT JOIN symbol_names n ON n.symbol = i.symbol
+        WHERE i.date = ? AND i.total_net > 0
+        ORDER BY i.total_net DESC LIMIT 10
+    """, (latest_date,)).fetchall()
+
+    top_sell = conn.execute("""
+        SELECT i.symbol, i.foreign_net, i.trust_net, i.dealer_net, i.total_net, i.date,
+               COALESCE(n.name_zh, i.symbol) as name_zh
+        FROM tw_institutional i
+        LEFT JOIN symbol_names n ON n.symbol = i.symbol
+        WHERE i.date = ? AND i.total_net < 0
+        ORDER BY i.total_net ASC LIMIT 10
+    """, (latest_date,)).fetchall()
+
+    conn.close()
+    return jsonify({
+        "date": latest_date,
+        "top_buy": rows_to_dicts(top_buy),
+        "top_sell": rows_to_dicts(top_sell),
+    })
+
+
+@app.route("/api/eps-leaders")
+def api_eps_leaders():
+    """EPS 排行 — 最新季度 EPS Top 20"""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT e.symbol, e.year, e.quarter, e.eps, e.revenue, e.profit, e.date,
+               COALESCE(n.name_zh, e.symbol) as name_zh,
+               p.per, p.pbr, p.dividend_yield
+        FROM tw_eps e
+        LEFT JOIN symbol_names n ON n.symbol = e.symbol
+        LEFT JOIN (
+            SELECT symbol, per, pbr, dividend_yield,
+                   ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY date DESC) as rn
+            FROM tw_per
+        ) p ON p.symbol = e.symbol AND p.rn = 1
+        WHERE e.eps IS NOT NULL
+        ORDER BY e.eps DESC LIMIT 20
+    """).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/screener/high-yield")
+def api_high_yield_screener():
+    """高殖利率篩選：殖利率 > 5% 且 PER < 20 的價值股"""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT p.symbol, p.per, p.pbr, p.dividend_yield, p.date,
+               COALESCE(n.name_zh, p.symbol) as name_zh,
+               e.eps
+        FROM tw_per p
+        LEFT JOIN symbol_names n ON n.symbol = p.symbol
+        LEFT JOIN tw_eps e ON e.symbol = p.symbol
+        WHERE p.date = (SELECT MAX(date) FROM tw_per WHERE symbol = p.symbol)
+        AND CAST(p.dividend_yield AS REAL) > 5
+        AND CAST(p.per AS REAL) > 0 AND CAST(p.per AS REAL) < 20
+        ORDER BY CAST(p.dividend_yield AS REAL) DESC
+        LIMIT 30
+    """).fetchall()
+    conn.close()
+    return jsonify({"count": len(rows), "stocks": rows_to_dicts(rows)})
+
+
+@app.route("/api/screener/foreign-buy-streak")
+def api_foreign_buy_streak():
+    """外資連買排行：外資連續淨買超天數最多的股票"""
+    conn = get_conn()
+    # 取所有有籌碼的股票
+    symbols = conn.execute(
+        "SELECT DISTINCT symbol FROM tw_institutional ORDER BY symbol"
+    ).fetchall()
+
+    streaks = []
+    for row in symbols:
+        sym = row["symbol"]
+        data = conn.execute(
+            "SELECT date, foreign_net FROM tw_institutional WHERE symbol=? ORDER BY date DESC LIMIT 30",
+            (sym,)).fetchall()
+        streak = 0
+        total_net = 0
+        for d in data:
+            if d["foreign_net"] and d["foreign_net"] > 0:
+                streak += 1
+                total_net += d["foreign_net"]
+            else:
+                break
+        if streak >= 3:
+            streaks.append({"symbol": sym, "streak_days": streak, "total_net": total_net})
+
+    # 加中文名
+    name_rows = conn.execute("SELECT symbol, name_zh FROM symbol_names").fetchall()
+    names = {r["symbol"]: r["name_zh"] for r in name_rows}
+    for s in streaks:
+        s["name_zh"] = names.get(s["symbol"], s["symbol"])
+
+    conn.close()
+    streaks.sort(key=lambda x: x["streak_days"], reverse=True)
+    return jsonify({"count": len(streaks), "stocks": streaks[:20]})
+
+
+@app.route("/api/screener/revenue-growth")
+def api_revenue_growth_screener():
+    """營收連續成長篩選：月營收 YoY 連續正成長"""
+    conn = get_conn()
+    symbols = conn.execute(
+        "SELECT DISTINCT symbol FROM tw_revenue ORDER BY symbol"
+    ).fetchall()
+
+    growers = []
+    for row in symbols:
+        sym = row["symbol"]
+        data = conn.execute(
+            "SELECT date, revenue_yoy FROM tw_revenue WHERE symbol=? ORDER BY date DESC LIMIT 12",
+            (sym,)).fetchall()
+        streak = 0
+        for d in data:
+            if d["revenue_yoy"] and d["revenue_yoy"] > 0:
+                streak += 1
+            else:
+                break
+        if streak >= 3:
+            latest_yoy = data[0]["revenue_yoy"] if data else 0
+            growers.append({"symbol": sym, "growth_months": streak, "latest_yoy": round(latest_yoy, 1)})
+
+    name_rows = conn.execute("SELECT symbol, name_zh FROM symbol_names").fetchall()
+    names = {r["symbol"]: r["name_zh"] for r in name_rows}
+    for g in growers:
+        g["name_zh"] = names.get(g["symbol"], g["symbol"])
+
+    conn.close()
+    growers.sort(key=lambda x: x["growth_months"], reverse=True)
+    return jsonify({"count": len(growers), "stocks": growers[:20]})
 
 
 @app.route("/api/chipdata")
@@ -723,9 +1025,18 @@ def api_chipdata_list():
     return jsonify(rows_to_dicts(rows))
 
 
+@app.route("/screener")
+def screener_page():
+    return render_template('screener.html')
+
+
 @app.route("/chipdata")
 @app.route("/chipdata/<symbol>")
 def chipdata_page(symbol=None):
+    return render_template('chipdata.html')
+
+
+def chipdata_page_old(symbol=None):
     conn = get_conn()
     stocks = conn.execute(
         "SELECT DISTINCT symbol FROM tw_institutional ORDER BY symbol"
@@ -845,12 +1156,20 @@ def chipdata_page(symbol=None):
     return page(f"籌碼分析 — {symbol or ''}", content)
 
 
+@app.route("/api/analyze/<symbol>")
+def api_analyze(symbol):
+    """個股綜合分析報告"""
+    from investment_analyst import analyze_stock
+    report = analyze_stock(symbol)
+    return jsonify(report)
+
+
 @app.route("/api/manifest")
 def api_manifest():
     """服務清單 — 供 SBS Dashboard 動態偵測"""
     return jsonify({
         "name": "投資系統",
-        "version": "1.0",
+        "version": "2.0.0",
         "port": 18900,
         "icon": "📊",
         "pages": [
@@ -860,11 +1179,17 @@ def api_manifest():
             {"path": "/backtests", "name": "回測結果", "icon": "🏆"},
             {"path": "/messages", "name": "群組監聽", "icon": "📨"},
             {"path": "/chipdata", "name": "籌碼分析", "icon": "🏦"},
+            {"path": "/screener", "name": "智慧篩選", "icon": "🔍"},
+            {"path": "/simulator", "name": "模擬交易", "icon": "🎯"},
         ],
         "apis": [
             "/api/backtests", "/api/market/<symbol>", "/api/trades",
             "/api/symbols", "/api/intelligence", "/api/mood",
-            "/api/tg-messages", "/api/tg-stats", "/api/manifest",
+            "/api/tg-messages", "/api/tg-stats", "/api/symbol-names",
+            "/api/chipdata/<symbol>", "/api/top-flow", "/api/eps-leaders",
+            "/api/screener/high-yield", "/api/screener/foreign-buy-streak",
+            "/api/screener/revenue-growth", "/api/screener/vix-panic",
+            "/api/manifest", "/health",
         ],
         "status": "running",
     })
@@ -875,17 +1200,264 @@ def health():
     """健康檢查端點"""
     conn = get_conn()
     symbols = conn.execute("SELECT COUNT(DISTINCT symbol) FROM market_data").fetchone()[0]
+    rows = conn.execute("SELECT COUNT(*) FROM market_data").fetchone()[0]
     news = conn.execute("SELECT COUNT(*) FROM news_intelligence").fetchone()[0]
+    news_analyzed = conn.execute("SELECT COUNT(*) FROM news_intelligence WHERE sentiment IS NOT NULL").fetchone()[0]
     backtests = conn.execute("SELECT COUNT(*) FROM backtest_results").fetchone()[0]
+    eps_count = conn.execute("SELECT COUNT(*) FROM tw_eps").fetchone()[0]
+    per_count = conn.execute("SELECT COUNT(*) FROM tw_per").fetchone()[0]
+    inst_count = conn.execute("SELECT COUNT(*) FROM tw_institutional").fetchone()[0]
     conn.close()
     return jsonify({
         "status": "ok",
-        "name": "投資系統",
-        "symbols": symbols,
-        "news": news,
-        "backtests": backtests,
+        "name": "Symbiosis Invest",
+        "version": "2.0.0",
+        "data": {
+            "symbols": symbols,
+            "market_rows": rows,
+            "news_total": news,
+            "news_analyzed": news_analyzed,
+            "backtests": backtests,
+            "eps": eps_count,
+            "per": per_count,
+            "institutional": inst_count,
+        },
         "timestamp": datetime.now().isoformat(),
     })
+
+
+# ── 模擬交易 ───────────────────────────────────────────
+
+@app.route("/simulator")
+def simulator():
+    return render_template("simulator.html")
+
+
+@app.route("/api/sim/account")
+def api_sim_account():
+    conn = get_conn()
+    acct = conn.execute("SELECT * FROM sim_account WHERE id=1").fetchone()
+    # 計算持倉市值
+    positions = conn.execute("SELECT * FROM sim_portfolio WHERE quantity > 0").fetchall()
+    position_value = sum((r["current_price"] or r["avg_price"]) * r["quantity"] * 1000 for r in positions)
+    unrealized = sum(r["unrealized_pnl"] or 0 for r in positions)
+    cash = acct["cash"]
+    total = cash + position_value
+    conn.execute("UPDATE sim_account SET total_value=?, updated_at=datetime('now','localtime') WHERE id=1", (total,))
+    conn.commit()
+    conn.close()
+    return jsonify({
+        "cash": cash,
+        "total_value": total,
+        "position_value": position_value,
+        "realized_pnl": acct["realized_pnl"],
+        "unrealized_pnl": unrealized,
+    })
+
+
+@app.route("/api/sim/portfolio")
+def api_sim_portfolio():
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM sim_portfolio WHERE quantity > 0 ORDER BY symbol").fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/sim/orders")
+def api_sim_orders():
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM sim_orders ORDER BY created_at DESC LIMIT 100").fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/sim/order", methods=["POST"])
+def api_sim_place_order():
+    data = request.get_json(force=True)
+    symbol = data.get("symbol", "").strip()
+    action = data.get("action", "buy")
+    order_type = data.get("order_type", "limit")
+    price = data.get("price")
+    quantity = int(data.get("quantity", 0))
+    strategy = data.get("strategy", "")
+    note = data.get("note", "")
+    name_zh = data.get("name_zh", "")
+
+    if not symbol or quantity <= 0:
+        return jsonify({"error": "symbol 和 quantity 為必填"}), 400
+
+    if order_type == "limit" and (price is None or price <= 0):
+        return jsonify({"error": "限價單需要有效的 price"}), 400
+
+    conn = get_conn()
+    conn.execute("""
+        INSERT INTO sim_orders (symbol, name_zh, action, order_type, price, quantity, status, strategy, note)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+    """, (symbol, name_zh, action, order_type, price, quantity, strategy, note))
+    conn.commit()
+    order_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.close()
+    return jsonify({"ok": True, "id": order_id})
+
+
+@app.route("/api/sim/cancel/<int:order_id>", methods=["POST"])
+def api_sim_cancel(order_id):
+    conn = get_conn()
+    order = conn.execute("SELECT * FROM sim_orders WHERE id=?", (order_id,)).fetchone()
+    if not order:
+        conn.close()
+        return jsonify({"error": "找不到此委託"}), 404
+    if order["status"] != "pending":
+        conn.close()
+        return jsonify({"error": "只能取消待成交委託"}), 400
+    conn.execute("UPDATE sim_orders SET status='cancelled', updated_at=datetime('now','localtime') WHERE id=?", (order_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/sim/fill/<int:order_id>", methods=["POST"])
+def api_sim_fill(order_id):
+    """模擬成交 — 更新持倉與帳戶"""
+    data = request.get_json(force=True) if request.is_json else {}
+    conn = get_conn()
+    order = conn.execute("SELECT * FROM sim_orders WHERE id=?", (order_id,)).fetchone()
+    if not order:
+        conn.close()
+        return jsonify({"error": "找不到此委託"}), 404
+    if order["status"] != "pending":
+        conn.close()
+        return jsonify({"error": "只能成交待成交委託"}), 400
+
+    fill_price = data.get("price") or order["price"]
+    if not fill_price or fill_price <= 0:
+        conn.close()
+        return jsonify({"error": "成交價格無效"}), 400
+
+    symbol = order["symbol"]
+    name_zh = order["name_zh"] or ""
+    quantity = order["quantity"]  # 張數
+    shares = quantity * 1000  # 股數
+    cost = fill_price * shares
+    action = order["action"]
+
+    acct = conn.execute("SELECT * FROM sim_account WHERE id=1").fetchone()
+    cash = acct["cash"]
+    realized_pnl = acct["realized_pnl"]
+
+    if action == "buy":
+        if cash < cost:
+            conn.close()
+            return jsonify({"error": f"現金不足：需要 {cost:,.0f}，現有 {cash:,.0f}"}), 400
+        cash -= cost
+        # 更新持倉
+        pos = conn.execute("SELECT * FROM sim_portfolio WHERE symbol=?", (symbol,)).fetchone()
+        if pos:
+            old_qty = pos["quantity"]
+            old_avg = pos["avg_price"]
+            new_qty = old_qty + quantity
+            new_avg = (old_avg * old_qty * 1000 + cost) / (new_qty * 1000)
+            conn.execute("""UPDATE sim_portfolio SET avg_price=?, quantity=?, name_zh=?,
+                            current_price=?, updated_at=datetime('now','localtime') WHERE symbol=?""",
+                         (round(new_avg, 2), new_qty, name_zh or pos["name_zh"], fill_price, symbol))
+        else:
+            conn.execute("""INSERT INTO sim_portfolio (symbol, name_zh, avg_price, quantity, current_price)
+                            VALUES (?, ?, ?, ?, ?)""",
+                         (symbol, name_zh, fill_price, quantity, fill_price))
+    elif action == "sell":
+        pos = conn.execute("SELECT * FROM sim_portfolio WHERE symbol=?", (symbol,)).fetchone()
+        if not pos or pos["quantity"] < quantity:
+            conn.close()
+            return jsonify({"error": f"持倉不足：持有 {pos['quantity'] if pos else 0} 張"}), 400
+        cash += cost
+        pnl = (fill_price - pos["avg_price"]) * shares
+        realized_pnl += pnl
+        new_qty = pos["quantity"] - quantity
+        if new_qty == 0:
+            conn.execute("DELETE FROM sim_portfolio WHERE symbol=?", (symbol,))
+        else:
+            conn.execute("""UPDATE sim_portfolio SET quantity=?, current_price=?,
+                            unrealized_pnl=?, updated_at=datetime('now','localtime') WHERE symbol=?""",
+                         (new_qty, fill_price,
+                          (fill_price - pos["avg_price"]) * new_qty * 1000, symbol))
+
+    # 更新帳戶
+    conn.execute("""UPDATE sim_account SET cash=?, realized_pnl=?,
+                    updated_at=datetime('now','localtime') WHERE id=1""", (cash, realized_pnl))
+    # 更新委託狀態
+    conn.execute("""UPDATE sim_orders SET status='filled', filled_price=?,
+                    filled_at=datetime('now','localtime'), updated_at=datetime('now','localtime')
+                    WHERE id=?""", (fill_price, order_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "filled_price": fill_price})
+
+
+@app.route("/api/sim/signals")
+def api_sim_signals():
+    """取得最新策略信號（從 backtest_results 讀取最新一筆每個策略）"""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT b.strategy, b.symbol, b.total_return, b.sharpe_ratio, b.win_rate, b.ts,
+               COALESCE(n.name_zh, b.symbol) as name_zh
+        FROM backtest_results b
+        LEFT JOIN symbol_names n ON n.symbol = b.symbol
+        WHERE b.ts = (SELECT MAX(ts) FROM backtest_results WHERE strategy = b.strategy AND symbol = b.symbol)
+        ORDER BY b.ts DESC
+        LIMIT 30
+    """).fetchall()
+    conn.close()
+    signals = []
+    for r in rows:
+        ret = r["total_return"] or 0
+        signal = "buy" if ret > 5 else ("sell" if ret < -5 else "hold")
+        confidence = min(100, abs(ret) * 3)
+        signals.append({
+            "strategy": r["strategy"],
+            "symbol": r["symbol"],
+            "name_zh": r["name_zh"],
+            "signal": signal,
+            "confidence": round(confidence, 1),
+            "total_return": round(ret, 2),
+            "sharpe": round(r["sharpe_ratio"] or 0, 2),
+            "win_rate": round(r["win_rate"] or 0, 1),
+            "ts": r["ts"],
+        })
+    return jsonify(signals)
+
+
+# ── PTT 股版 API ─────────────────────────────────────
+
+@app.route("/api/ptt")
+def api_ptt():
+    """最新 PTT 股版文章"""
+    limit = request.args.get("limit", 30, type=int)
+    category = request.args.get("category", None)
+    conn = get_conn()
+    if category:
+        rows = conn.execute(
+            "SELECT * FROM ptt_posts WHERE category=? ORDER BY crawled_at DESC LIMIT ?",
+            (category, limit)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM ptt_posts ORDER BY crawled_at DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/ptt-sentiment")
+def api_ptt_sentiment():
+    """PTT 股版情緒統計"""
+    hours = request.args.get("hours", 24, type=int)
+    try:
+        from ptt_monitor import get_ptt_sentiment
+        result = get_ptt_sentiment(hours=hours)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

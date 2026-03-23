@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>市場情報 — Symbiosis Invest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+.intel-grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; }
+.sentiment-sidebar { position: sticky; top: 72px; }
+.sentiment-big { text-align: center; padding: 20px 0; }
+.sentiment-big .score { font-size: 3em; font-weight: 700; font-family: var(--font-mono); }
+.sentiment-big .label { font-size: 0.85em; margin-top: 4px; }
+.sentiment-bars { margin-top: 16px; }
+.sent-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.78em; }
+.sent-bar .bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+.sent-bar .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+.filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-chip { padding: 6px 14px; border-radius: var(--radius-badge); font-size: 0.78em; cursor: pointer; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); transition: var(--transition); }
+.filter-chip:hover { border-color: var(--border-hover); }
+.filter-chip.active { background: rgba(99,102,241,0.1); border-color: var(--accent-indigo); color: var(--accent-indigo); }
+
+.news-card { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.04); transition: var(--transition); }
+.news-card:hover { background: rgba(255,255,255,0.02); }
+.news-card:last-child { border-bottom: none; }
+.news-card .title { font-size: 0.9em; font-weight: 500; margin-bottom: 6px; line-height: 1.5; }
+.news-card .title a { color: var(--text-primary); }
+.news-card .title a:hover { color: var(--accent-cyan); }
+.news-card .reason { font-size: 0.78em; color: var(--text-tertiary); margin-bottom: 6px; line-height: 1.5; }
+.news-card .meta { display: flex; gap: 8px; align-items: center; font-size: 0.7em; color: var(--text-tertiary); }
+
+@media (max-width: 900px) {
+  .intel-grid { grid-template-columns: 1fr; }
+  .sentiment-sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .sentiment-sidebar .card:first-child { grid-column: span 2; }
+}
+</style>
+</head>
+<body>
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link active">市場情報</a>
+    <a href="/backtests" class="nav-link">回測結果</a>
+    <a href="/messages" class="nav-link">群組監聽</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+    <a href="/screener" class="nav-link">智慧篩選</a>
+  </nav>
+</header>
+
+<div class="page-content">
+  <div class="intel-grid">
+    <!-- Sidebar -->
+    <div class="sentiment-sidebar">
+      <div class="card">
+        <div class="card-title">市場情緒</div>
+        <div class="sentiment-big">
+          <div class="score" id="mood-score">--</div>
+          <div class="label" id="mood-label">載入中</div>
+        </div>
+        <div class="sentiment-bars">
+          <div class="sent-bar"><span style="color:var(--price-up)">看多</span><div class="bar-track"><div class="bar-fill" id="bar-bull" style="width:0;background:var(--price-up)"></div></div><span id="cnt-bull">--</span></div>
+          <div class="sent-bar"><span style="color:var(--text-secondary)">中性</span><div class="bar-track"><div class="bar-fill" id="bar-neutral" style="width:0;background:var(--text-secondary)"></div></div><span id="cnt-neutral">--</span></div>
+          <div class="sent-bar"><span style="color:var(--price-down)">看空</span><div class="bar-track"><div class="bar-fill" id="bar-bear" style="width:0;background:var(--price-down)"></div></div><span id="cnt-bear">--</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">統計</div>
+        <div style="font-size:.82em;color:var(--text-secondary)">
+          <div style="display:flex;justify-content:space-between;padding:4px 0">總新聞<span id="stat-total" style="font-family:var(--font-mono)">--</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0">已分析<span id="stat-analyzed" style="font-family:var(--font-mono)">--</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div>
+      <div class="filter-row">
+        <button class="filter-chip active" onclick="filterNews('all',this)">全部</button>
+        <button class="filter-chip" onclick="filterNews('bullish',this)">🔴 看多</button>
+        <button class="filter-chip" onclick="filterNews('bearish',this)">🟢 看空</button>
+        <button class="filter-chip" onclick="filterNews('neutral',this)">⚪ 中性</button>
+      </div>
+      <div class="card" id="news-container">
+        <div class="skeleton" style="height:400px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item"><span class="tab-icon">📊</span>儀表板</a>
+    <a href="/trading" class="tab-item"><span class="tab-icon">📈</span>監控</a>
+    <a href="/intelligence" class="tab-item active"><span class="tab-icon">📰</span>情報</a>
+    <a href="/backtests" class="tab-item"><span class="tab-icon">🏆</span>回測</a>
+    <a href="/chipdata" class="tab-item"><span class="tab-icon">🏦</span>籌碼</a>
+  </div>
+</nav>
+
+<script>
+function escapeHtml(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+let allNews = [];
+
+async function loadIntelligence() {
+  // Mood
+  try {
+    const mood = await (await fetch('/api/mood')).json();
+    const total = (mood.bullish||0) + (mood.bearish||0) + (mood.neutral||0);
+    document.getElementById('mood-score').textContent = (mood.avg_score||5).toFixed(1);
+    const dom = mood.mood === 'bearish' ? '偏空' : mood.mood === 'bullish' ? '偏多' : '中性';
+    const domColor = mood.mood === 'bearish' ? 'var(--price-down)' : mood.mood === 'bullish' ? 'var(--price-up)' : 'var(--text-secondary)';
+    document.getElementById('mood-label').textContent = dom;
+    document.getElementById('mood-label').style.color = domColor;
+
+    const pBull = total ? (mood.bullish/total*100) : 0;
+    const pNeutral = total ? (mood.neutral/total*100) : 0;
+    const pBear = total ? (mood.bearish/total*100) : 0;
+    document.getElementById('bar-bull').style.width = pBull+'%';
+    document.getElementById('bar-neutral').style.width = pNeutral+'%';
+    document.getElementById('bar-bear').style.width = pBear+'%';
+    document.getElementById('cnt-bull').textContent = mood.bullish||0;
+    document.getElementById('cnt-neutral').textContent = mood.neutral||0;
+    document.getElementById('cnt-bear').textContent = mood.bearish||0;
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-analyzed').textContent = total;
+  } catch {}
+
+  // News
+  try {
+    allNews = await (await fetch('/api/intelligence')).json();
+    renderNews(allNews);
+  } catch {}
+}
+
+function renderNews(news) {
+  const container = document.getElementById('news-container');
+  if (!news.length) { container.innerHTML = '<div style="color:var(--text-tertiary);padding:20px;text-align:center">暫無新聞</div>'; return; }
+  container.innerHTML = news.map(n => {
+    const sentLabel = n.sentiment === 'bullish' ? '看多' : n.sentiment === 'bearish' ? '看空' : '中性';
+    const sentClass = n.sentiment === 'bullish' ? 'badge-up' : n.sentiment === 'bearish' ? 'badge-down' : 'badge-neutral';
+    const scoreColor = (n.score||5) >= 7 ? 'var(--price-up)' : (n.score||5) <= 3 ? 'var(--price-down)' : 'var(--text-secondary)';
+    return `<div class="news-card" data-sent="${n.sentiment||'neutral'}">
+      <div class="title"><a href="${n.url||'#'}" target="_blank" rel="noopener noreferrer">${n.title||'無標題'}</a></div>
+      ${n.reason ? `<div class="reason">→ ${n.reason}</div>` : ''}
+      <div class="meta">
+        <span class="badge ${sentClass}">${sentLabel}</span>
+        <span style="color:${scoreColor};font-family:var(--font-mono)">${n.score||'-'}/10</span>
+        <span>${(n.published_at||n.analyzed_at||'').slice(0,16)}</span>
+        <span>${n.source||''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterNews(sentiment, btn) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  if (sentiment === 'all') { renderNews(allNews); }
+  else { renderNews(allNews.filter(n => n.sentiment === sentiment)); }
+}
+
+loadIntelligence();
+</script>
+</body>
+</html>

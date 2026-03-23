@@ -1,0 +1,1389 @@
+{
+  "date": "2026-03-23T02:26:29.153913",
+  "movers": [
+    {
+      "symbol": "2002",
+      "total_net": 34413621,
+      "name_zh": "中鋼"
+    },
+    {
+      "symbol": "3034",
+      "total_net": 15699778,
+      "name_zh": "聯詠"
+    },
+    {
+      "symbol": "3231",
+      "total_net": 12373231,
+      "name_zh": "緯創"
+    },
+    {
+      "symbol": "2881",
+      "total_net": -11102075,
+      "name_zh": "富邦金"
+    },
+    {
+      "symbol": "1301",
+      "total_net": -10146296,
+      "name_zh": "台塑"
+    },
+    {
+      "symbol": "2330",
+      "total_net": -6804981,
+      "name_zh": "台積電"
+    },
+    {
+      "symbol": "2891",
+      "total_net": -5804046,
+      "name_zh": "中信金"
+    },
+    {
+      "symbol": "2886",
+      "total_net": -4869267,
+      "name_zh": "兆豐金"
+    },
+    {
+      "symbol": "2317",
+      "total_net": -4864228,
+      "name_zh": "鴻海"
+    },
+    {
+      "symbol": "2303",
+      "total_net": 3724564,
+      "name_zh": "聯電"
+    }
+  ],
+  "reports": [
+    {
+      "symbol": "2002",
+      "timestamp": "2026-03-23T02:26:29.143927",
+      "name": {
+        "name_zh": "中鋼",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": null,
+        "pbr": 1.0,
+        "dividend_yield": 0.77,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": -0.29,
+          "revenue": 317155264000.0,
+          "profit": -3506701000.0
+        }
+      ],
+      "annual_eps": -0.29,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": 33587233,
+          "trust_net": 0,
+          "dealer_net": 826388,
+          "total_net": 34413621
+        },
+        {
+          "date": "2026-03-19",
+          "foreign_net": -84194391,
+          "trust_net": 0,
+          "dealer_net": -623581,
+          "total_net": -84817972
+        },
+        {
+          "date": "2026-03-18",
+          "foreign_net": -4098223,
+          "trust_net": 0,
+          "dealer_net": 937911,
+          "total_net": -3160312
+        },
+        {
+          "date": "2026-03-17",
+          "foreign_net": -488803,
+          "trust_net": 0,
+          "dealer_net": 507509,
+          "total_net": 18706
+        },
+        {
+          "date": "2026-03-16",
+          "foreign_net": -11476353,
+          "trust_net": 0,
+          "dealer_net": -174102,
+          "total_net": -11650455
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 1,
+        "total": 33587233
+      },
+      "margin": {
+        "margin_balance": 30338,
+        "short_balance": 79,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-03-01",
+          "revenue": 24520577000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02-01",
+          "revenue": 26018929000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02",
+          "revenue": 24520577000.0,
+          "revenue_yoy": -12.930082690684047,
+          "revenue_mom": -5.758699752783829
+        },
+        {
+          "date": "2026-01-01",
+          "revenue": 25543419000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-12-01",
+          "revenue": 25367720000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-11-01",
+          "revenue": 24461547000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        }
+      ],
+      "revenue_growth_streak": 0,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 19.45,
+          "volume": 103794732
+        },
+        {
+          "date": "2026-03-19",
+          "close": 18.8,
+          "volume": 106377004
+        },
+        {
+          "date": "2026-03-18",
+          "close": 19.3,
+          "volume": 38922831
+        },
+        {
+          "date": "2026-03-17",
+          "close": 19.25,
+          "volume": 26521663
+        },
+        {
+          "date": "2026-03-16",
+          "close": 19.15,
+          "volume": 34663112
+        }
+      ],
+      "score": 4.0,
+      "summary": "【中鋼 (2002)】評分: 4.0/10 (中性)\nPER: None | 殖利率: 0.77% | 年化EPS: -0.29\n外資連買 1 天"
+    },
+    {
+      "symbol": "3034",
+      "timestamp": "2026-03-23T02:26:29.145225",
+      "name": {
+        "name_zh": "聯詠",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": 14.33,
+        "pbr": 3.46,
+        "dividend_yield": 5.97,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": 26.87,
+          "revenue": 100663144000.0,
+          "profit": 16347693000.0
+        }
+      ],
+      "annual_eps": 26.87,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": 15488044,
+          "trust_net": 0,
+          "dealer_net": 211734,
+          "total_net": 15699778
+        },
+        {
+          "date": "2026-03-19",
+          "foreign_net": 18578,
+          "trust_net": 0,
+          "dealer_net": 3761,
+          "total_net": 22339
+        },
+        {
+          "date": "2026-03-18",
+          "foreign_net": 566226,
+          "trust_net": 0,
+          "dealer_net": 139836,
+          "total_net": 706062
+        },
+        {
+          "date": "2026-03-17",
+          "foreign_net": 1169838,
+          "trust_net": 0,
+          "dealer_net": 155847,
+          "total_net": 1325685
+        },
+        {
+          "date": "2026-03-16",
+          "foreign_net": -1253228,
+          "trust_net": 0,
+          "dealer_net": 16562,
+          "total_net": -1236666
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 4,
+        "total": 17242686
+      },
+      "margin": {
+        "margin_balance": 4255,
+        "short_balance": 11,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-03-01",
+          "revenue": 7059376000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02-01",
+          "revenue": 7617321000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02",
+          "revenue": 7059376000.0,
+          "revenue_yoy": -23.824338936983672,
+          "revenue_mom": -7.324688036647005
+        },
+        {
+          "date": "2026-01-01",
+          "revenue": 7319722000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-12-01",
+          "revenue": 7618617000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-11-01",
+          "revenue": 7878870000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        }
+      ],
+      "revenue_growth_streak": 0,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 385.0,
+          "volume": 18421203
+        },
+        {
+          "date": "2026-03-19",
+          "close": 373.5,
+          "volume": 4575669
+        },
+        {
+          "date": "2026-03-18",
+          "close": 382.5,
+          "volume": 3538722
+        },
+        {
+          "date": "2026-03-17",
+          "close": 381.0,
+          "volume": 3351224
+        },
+        {
+          "date": "2026-03-16",
+          "close": 378.5,
+          "volume": 2883402
+        }
+      ],
+      "score": 7.5,
+      "summary": "【聯詠 (3034)】評分: 7.5/10 (看多)\nPER: 14.33 | 殖利率: 5.97% | 年化EPS: 26.87\n外資連買 4 天"
+    },
+    {
+      "symbol": "3231",
+      "timestamp": "2026-03-23T02:26:29.146388",
+      "name": {
+        "name_zh": "緯創",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": 15.08,
+        "pbr": 2.33,
+        "dividend_yield": 4.23,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": 9.04,
+          "revenue": 2186522636000.0,
+          "profit": 57772503000.0
+        }
+      ],
+      "annual_eps": 9.04,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": 11924352,
+          "trust_net": 0,
+          "dealer_net": 448879,
+          "total_net": 12373231
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 1,
+        "total": 11924352
+      },
+      "margin": {
+        "margin_balance": 59892,
+        "short_balance": 301,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-02",
+          "revenue": 284893080000.0,
+          "revenue_yoy": 177.36501624274968,
+          "revenue_mom": 24.75249941397962
+        }
+      ],
+      "revenue_growth_streak": 1,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 130.0,
+          "volume": 65186260
+        },
+        {
+          "date": "2026-03-19",
+          "close": 127.5,
+          "volume": 35163156
+        },
+        {
+          "date": "2026-03-18",
+          "close": 130.5,
+          "volume": 45720783
+        },
+        {
+          "date": "2026-03-17",
+          "close": 134.0,
+          "volume": 39186218
+        },
+        {
+          "date": "2026-03-16",
+          "close": 135.0,
+          "volume": 42569916
+        }
+      ],
+      "score": 5.5,
+      "summary": "【緯創 (3231)】評分: 5.5/10 (中性)\nPER: 15.08 | 殖利率: 4.23% | 年化EPS: 9.04\n外資連買 1 天\n營收連成長 1 月"
+    },
+    {
+      "symbol": "2881",
+      "timestamp": "2026-03-23T02:26:29.147874",
+      "name": {
+        "name_zh": "富邦金",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": 11.43,
+        "pbr": 1.41,
+        "dividend_yield": 4.8,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": 8.37,
+          "revenue": 381306135000.0,
+          "profit": 120981786000.0
+        }
+      ],
+      "annual_eps": 8.37,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": -10907081,
+          "trust_net": 0,
+          "dealer_net": -194994,
+          "total_net": -11102075
+        },
+        {
+          "date": "2026-03-19",
+          "foreign_net": -17610366,
+          "trust_net": 0,
+          "dealer_net": 19985,
+          "total_net": -17590381
+        },
+        {
+          "date": "2026-03-18",
+          "foreign_net": -2368066,
+          "trust_net": 0,
+          "dealer_net": 695588,
+          "total_net": -1672478
+        },
+        {
+          "date": "2026-03-17",
+          "foreign_net": 6145857,
+          "trust_net": 0,
+          "dealer_net": 652786,
+          "total_net": 6798643
+        },
+        {
+          "date": "2026-03-16",
+          "foreign_net": 1325308,
+          "trust_net": 0,
+          "dealer_net": 142267,
+          "total_net": 1467575
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 0,
+        "total": 0
+      },
+      "margin": {
+        "margin_balance": 8361,
+        "short_balance": 38,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-03-01",
+          "revenue": 29373464000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02-01",
+          "revenue": 23880545000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02",
+          "revenue": 29373464000.0,
+          "revenue_yoy": 69.03074057405094,
+          "revenue_mom": 23.001648412965448
+        },
+        {
+          "date": "2026-01-01",
+          "revenue": 42650900000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-12-01",
+          "revenue": 52974090000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-11-01",
+          "revenue": 48388311000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        }
+      ],
+      "revenue_growth_streak": 0,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 88.6,
+          "volume": 35481530
+        },
+        {
+          "date": "2026-03-19",
+          "close": 88.2,
+          "volume": 26004197
+        },
+        {
+          "date": "2026-03-18",
+          "close": 89.5,
+          "volume": 15143244
+        },
+        {
+          "date": "2026-03-17",
+          "close": 89.8,
+          "volume": 24990613
+        },
+        {
+          "date": "2026-03-16",
+          "close": 88.8,
+          "volume": 13732091
+        }
+      ],
+      "score": 6.0,
+      "summary": "【富邦金 (2881)】評分: 6.0/10 (中性)\nPER: 11.43 | 殖利率: 4.8% | 年化EPS: 8.37"
+    },
+    {
+      "symbol": "1301",
+      "timestamp": "2026-03-23T02:26:29.148657",
+      "name": {
+        "name_zh": "台塑",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": null,
+        "pbr": 0.83,
+        "dividend_yield": 1.05,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": -1.58,
+          "revenue": 175411403000.0,
+          "profit": -10048659000.0
+        }
+      ],
+      "annual_eps": -1.58,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": -9461027,
+          "trust_net": 0,
+          "dealer_net": -685269,
+          "total_net": -10146296
+        },
+        {
+          "date": "2026-03-19",
+          "foreign_net": -3067548,
+          "trust_net": 0,
+          "dealer_net": 1427856,
+          "total_net": -1639692
+        },
+        {
+          "date": "2026-03-18",
+          "foreign_net": 5198807,
+          "trust_net": 0,
+          "dealer_net": 688248,
+          "total_net": 5887055
+        },
+        {
+          "date": "2026-03-17",
+          "foreign_net": -570779,
+          "trust_net": 0,
+          "dealer_net": 166661,
+          "total_net": -404118
+        },
+        {
+          "date": "2026-03-16",
+          "foreign_net": 4898781,
+          "trust_net": 0,
+          "dealer_net": 303946,
+          "total_net": 5202727
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 0,
+        "total": 0
+      },
+      "margin": {
+        "margin_balance": 21673,
+        "short_balance": 0,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-03-01",
+          "revenue": 10739649000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02-01",
+          "revenue": 13891082000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02",
+          "revenue": 10739649000.0,
+          "revenue_yoy": -33.41742396489384,
+          "revenue_mom": -22.68673527375333
+        },
+        {
+          "date": "2026-01-01",
+          "revenue": 14304735000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-12-01",
+          "revenue": 13389395000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-11-01",
+          "revenue": 13410015000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        }
+      ],
+      "revenue_growth_streak": 0,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 47.6,
+          "volume": 44047194
+        },
+        {
+          "date": "2026-03-19",
+          "close": 48.6,
+          "volume": 66981087
+        },
+        {
+          "date": "2026-03-18",
+          "close": 47.3,
+          "volume": 31246252
+        },
+        {
+          "date": "2026-03-17",
+          "close": 46.45,
+          "volume": 23562577
+        },
+        {
+          "date": "2026-03-16",
+          "close": 46.85,
+          "volume": 36741588
+        }
+      ],
+      "score": 4.0,
+      "summary": "【台塑 (1301)】評分: 4.0/10 (中性)\nPER: None | 殖利率: 1.05% | 年化EPS: -1.58"
+    },
+    {
+      "symbol": "2330",
+      "timestamp": "2026-03-23T02:26:29.149451",
+      "name": {
+        "name_zh": "台積電",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": 27.78,
+        "pbr": 8.8,
+        "dividend_yield": 1.2,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": 66.26,
+          "revenue": 3809054272000.0,
+          "profit": 1715396780000.0
+        }
+      ],
+      "annual_eps": 66.26,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": -6768881,
+          "trust_net": 0,
+          "dealer_net": -36100,
+          "total_net": -6804981
+        },
+        {
+          "date": "2026-03-19",
+          "foreign_net": -22789968,
+          "trust_net": 0,
+          "dealer_net": 451054,
+          "total_net": -22338914
+        },
+        {
+          "date": "2026-03-18",
+          "foreign_net": 373457,
+          "trust_net": 0,
+          "dealer_net": 721299,
+          "total_net": 1094756
+        },
+        {
+          "date": "2026-03-17",
+          "foreign_net": -230432,
+          "trust_net": 0,
+          "dealer_net": 905369,
+          "total_net": 674937
+        },
+        {
+          "date": "2026-03-16",
+          "foreign_net": -16174225,
+          "trust_net": 0,
+          "dealer_net": 660529,
+          "total_net": -15513696
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 0,
+        "total": 0
+      },
+      "margin": {
+        "margin_balance": 26115,
+        "short_balance": 7,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-03-01",
+          "revenue": 317656613000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02-01",
+          "revenue": 401255128000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02",
+          "revenue": 317656613000.0,
+          "revenue_yoy": 22.171487229224354,
+          "revenue_mom": -20.834254609202155
+        },
+        {
+          "date": "2026-01-01",
+          "revenue": 335003568000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-12-01",
+          "revenue": 343613802000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-11-01",
+          "revenue": 367473051000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        }
+      ],
+      "revenue_growth_streak": 0,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 1840.0,
+          "volume": 53705722
+        },
+        {
+          "date": "2026-03-19",
+          "close": 1850.0,
+          "volume": 38750629
+        },
+        {
+          "date": "2026-03-18",
+          "close": 1905.0,
+          "volume": 25694925
+        },
+        {
+          "date": "2026-03-17",
+          "close": 1870.0,
+          "volume": 26754183
+        },
+        {
+          "date": "2026-03-16",
+          "close": 1845.0,
+          "volume": 35401289
+        }
+      ],
+      "score": 5.5,
+      "summary": "【台積電 (2330)】評分: 5.5/10 (中性)\nPER: 27.78 | 殖利率: 1.2% | 年化EPS: 66.26"
+    },
+    {
+      "symbol": "2891",
+      "timestamp": "2026-03-23T02:26:29.150235",
+      "name": {
+        "name_zh": "中信金",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": 13.03,
+        "pbr": 2.03,
+        "dividend_yield": 4.41,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": 4.08,
+          "revenue": 244894671000.0,
+          "profit": 82328843000.0
+        }
+      ],
+      "annual_eps": 4.08,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": -6105675,
+          "trust_net": 0,
+          "dealer_net": 301629,
+          "total_net": -5804046
+        },
+        {
+          "date": "2026-03-19",
+          "foreign_net": -20818392,
+          "trust_net": 0,
+          "dealer_net": 1364532,
+          "total_net": -19453860
+        },
+        {
+          "date": "2026-03-18",
+          "foreign_net": -4745289,
+          "trust_net": 0,
+          "dealer_net": -47552,
+          "total_net": -4792841
+        },
+        {
+          "date": "2026-03-17",
+          "foreign_net": 3961251,
+          "trust_net": 0,
+          "dealer_net": 909516,
+          "total_net": 4870767
+        },
+        {
+          "date": "2026-03-16",
+          "foreign_net": 3342234,
+          "trust_net": 0,
+          "dealer_net": -3816,
+          "total_net": 3338418
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 0,
+        "total": 0
+      },
+      "margin": {
+        "margin_balance": 2859,
+        "short_balance": 190,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-03-01",
+          "revenue": 20907830000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02-01",
+          "revenue": 25856645000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02",
+          "revenue": 20907830000.0,
+          "revenue_yoy": 14.164938225225317,
+          "revenue_mom": -19.13943204928559
+        },
+        {
+          "date": "2026-01-01",
+          "revenue": 22845536000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-12-01",
+          "revenue": 23881840000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-11-01",
+          "revenue": 24208396000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        }
+      ],
+      "revenue_growth_streak": 0,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 52.1,
+          "volume": 37046334
+        },
+        {
+          "date": "2026-03-19",
+          "close": 51.6,
+          "volume": 43183067
+        },
+        {
+          "date": "2026-03-18",
+          "close": 53.3,
+          "volume": 26215982
+        },
+        {
+          "date": "2026-03-17",
+          "close": 52.9,
+          "volume": 46711808
+        },
+        {
+          "date": "2026-03-16",
+          "close": 51.9,
+          "volume": 33041613
+        }
+      ],
+      "score": 6.0,
+      "summary": "【中信金 (2891)】評分: 6.0/10 (中性)\nPER: 13.03 | 殖利率: 4.41% | 年化EPS: 4.08"
+    },
+    {
+      "symbol": "2886",
+      "timestamp": "2026-03-23T02:26:29.151148",
+      "name": {
+        "name_zh": "兆豐金",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": 16.42,
+        "pbr": 1.47,
+        "dividend_yield": 4.13,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": 2.36,
+          "revenue": 82007674000.0,
+          "profit": 35038130000.0
+        }
+      ],
+      "annual_eps": 2.36,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": -4998311,
+          "trust_net": 0,
+          "dealer_net": 129044,
+          "total_net": -4869267
+        },
+        {
+          "date": "2026-03-19",
+          "foreign_net": -7749635,
+          "trust_net": 0,
+          "dealer_net": 319518,
+          "total_net": -7430117
+        },
+        {
+          "date": "2026-03-18",
+          "foreign_net": 742907,
+          "trust_net": 0,
+          "dealer_net": 143187,
+          "total_net": 886094
+        },
+        {
+          "date": "2026-03-17",
+          "foreign_net": 3046073,
+          "trust_net": 0,
+          "dealer_net": 520000,
+          "total_net": 3566073
+        },
+        {
+          "date": "2026-03-16",
+          "foreign_net": -32261,
+          "trust_net": 0,
+          "dealer_net": 6212,
+          "total_net": -26049
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 0,
+        "total": 0
+      },
+      "margin": {
+        "margin_balance": 1066,
+        "short_balance": 21,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-03-01",
+          "revenue": 6460103000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02-01",
+          "revenue": 8155833000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02",
+          "revenue": 6460103000.0,
+          "revenue_yoy": -0.7261779665418746,
+          "revenue_mom": -20.791622388540816
+        },
+        {
+          "date": "2026-01-01",
+          "revenue": 7014202000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-12-01",
+          "revenue": 5947092000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-11-01",
+          "revenue": 6853182000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        }
+      ],
+      "revenue_growth_streak": 0,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 38.75,
+          "volume": 30667665
+        },
+        {
+          "date": "2026-03-19",
+          "close": 38.95,
+          "volume": 19892870
+        },
+        {
+          "date": "2026-03-18",
+          "close": 39.3,
+          "volume": 19423414
+        },
+        {
+          "date": "2026-03-17",
+          "close": 39.35,
+          "volume": 17188879
+        },
+        {
+          "date": "2026-03-16",
+          "close": 39.0,
+          "volume": 12795692
+        }
+      ],
+      "score": 5.5,
+      "summary": "【兆豐金 (2886)】評分: 5.5/10 (中性)\nPER: 16.42 | 殖利率: 4.13% | 年化EPS: 2.36"
+    },
+    {
+      "symbol": "2317",
+      "timestamp": "2026-03-23T02:26:29.152061",
+      "name": {
+        "name_zh": "鴻海",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": 14.97,
+        "pbr": 1.6,
+        "dividend_yield": 3.55,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": 13.61,
+          "revenue": 8103104763000.0,
+          "profit": 215034486000.0
+        }
+      ],
+      "annual_eps": 13.61,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": -4888720,
+          "trust_net": 0,
+          "dealer_net": 24492,
+          "total_net": -4864228
+        },
+        {
+          "date": "2026-03-19",
+          "foreign_net": -37046404,
+          "trust_net": 0,
+          "dealer_net": -669983,
+          "total_net": -37716387
+        },
+        {
+          "date": "2026-03-18",
+          "foreign_net": -38172470,
+          "trust_net": 0,
+          "dealer_net": 4311188,
+          "total_net": -33861282
+        },
+        {
+          "date": "2026-03-17",
+          "foreign_net": -66452504,
+          "trust_net": 0,
+          "dealer_net": -1540680,
+          "total_net": -67993184
+        },
+        {
+          "date": "2026-03-16",
+          "foreign_net": -986272,
+          "trust_net": 0,
+          "dealer_net": 1259607,
+          "total_net": 273335
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 0,
+        "total": 0
+      },
+      "margin": {
+        "margin_balance": 66331,
+        "short_balance": 199,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-03-01",
+          "revenue": 595813348000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02-01",
+          "revenue": 730039420000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02",
+          "revenue": 595813348000.0,
+          "revenue_yoy": 8.058006051772931,
+          "revenue_mom": -18.386140299108778
+        },
+        {
+          "date": "2026-01-01",
+          "revenue": 862861362000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-12-01",
+          "revenue": 844275843000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-11-01",
+          "revenue": 895708525000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        }
+      ],
+      "revenue_growth_streak": 0,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 203.0,
+          "volume": 92925929
+        },
+        {
+          "date": "2026-03-19",
+          "close": 205.0,
+          "volume": 89096476
+        },
+        {
+          "date": "2026-03-18",
+          "close": 210.0,
+          "volume": 77136445
+        },
+        {
+          "date": "2026-03-17",
+          "close": 212.0,
+          "volume": 110777320
+        },
+        {
+          "date": "2026-03-16",
+          "close": 216.5,
+          "volume": 38534463
+        }
+      ],
+      "score": 6.5,
+      "summary": "【鴻海 (2317)】評分: 6.5/10 (中性)\nPER: 14.97 | 殖利率: 3.55% | 年化EPS: 13.61"
+    },
+    {
+      "symbol": "2303",
+      "timestamp": "2026-03-23T02:26:29.152945",
+      "name": {
+        "name_zh": "聯電",
+        "exchange": "TWSE",
+        "category": "台股"
+      },
+      "valuation": {
+        "per": 17.46,
+        "pbr": 1.92,
+        "dividend_yield": 4.5,
+        "date": "2026-03-23"
+      },
+      "eps": [
+        {
+          "year": 2025,
+          "quarter": 4,
+          "eps": 3.34,
+          "revenue": 237553199000.0,
+          "profit": 41534748000.0
+        }
+      ],
+      "annual_eps": 3.34,
+      "institutional": [
+        {
+          "date": "2026-03-20",
+          "foreign_net": 4068757,
+          "trust_net": 0,
+          "dealer_net": -344193,
+          "total_net": 3724564
+        },
+        {
+          "date": "2026-03-19",
+          "foreign_net": -30504133,
+          "trust_net": 0,
+          "dealer_net": 258983,
+          "total_net": -30245150
+        },
+        {
+          "date": "2026-03-18",
+          "foreign_net": 10005669,
+          "trust_net": 0,
+          "dealer_net": 939630,
+          "total_net": 10945299
+        },
+        {
+          "date": "2026-03-17",
+          "foreign_net": -3043371,
+          "trust_net": 0,
+          "dealer_net": 217208,
+          "total_net": -2826163
+        },
+        {
+          "date": "2026-03-16",
+          "foreign_net": 5296606,
+          "trust_net": 0,
+          "dealer_net": 4542585,
+          "total_net": 9839191
+        }
+      ],
+      "foreign_buy_streak": {
+        "days": 1,
+        "total": 4068757
+      },
+      "margin": {
+        "margin_balance": 74065,
+        "short_balance": 2,
+        "date": "2026-03-20"
+      },
+      "revenue": [
+        {
+          "date": "2026-03-01",
+          "revenue": 19345126000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02-01",
+          "revenue": 20862150000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2026-02",
+          "revenue": 19345126000.0,
+          "revenue_yoy": 6.329788388884721,
+          "revenue_mom": -7.271657043976771
+        },
+        {
+          "date": "2026-01-01",
+          "revenue": 19280724000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-12-01",
+          "revenue": 21233847000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        },
+        {
+          "date": "2025-11-01",
+          "revenue": 21294974000.0,
+          "revenue_yoy": 0.0,
+          "revenue_mom": 0.0
+        }
+      ],
+      "revenue_growth_streak": 0,
+      "recent_prices": [
+        {
+          "date": "2026-03-20",
+          "close": 57.8,
+          "volume": 81415502
+        },
+        {
+          "date": "2026-03-19",
+          "close": 58.7,
+          "volume": 86044917
+        },
+        {
+          "date": "2026-03-18",
+          "close": 61.1,
+          "volume": 65947546
+        },
+        {
+          "date": "2026-03-17",
+          "close": 60.7,
+          "volume": 46839635
+        },
+        {
+          "date": "2026-03-16",
+          "close": 60.5,
+          "volume": 58962603
+        }
+      ],
+      "score": 5.5,
+      "summary": "【聯電 (2303)】評分: 5.5/10 (中性)\nPER: 17.46 | 殖利率: 4.5% | 年化EPS: 3.34\n外資連買 1 天"
+    }
+  ]
+}

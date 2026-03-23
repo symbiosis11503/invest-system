@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>模擬交易 — Symbiosis Invest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+/* Order panel */
+.order-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: end;
+}
+.order-panel .full { grid-column: span 2; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label {
+  font-size: 0.7em; font-weight: 600; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.form-input {
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border-color);
+  border-radius: var(--radius-btn); padding: 10px 12px;
+  color: var(--text-primary); font-family: var(--font-mono); font-size: 0.88em;
+  outline: none; transition: var(--transition);
+}
+.form-input:focus { border-color: var(--accent-indigo); }
+.form-input::placeholder { color: var(--text-tertiary); }
+
+/* Action toggle */
+.action-toggle { display: flex; gap: 0; border-radius: var(--radius-btn); overflow: hidden; border: 1px solid var(--border-color); }
+.action-toggle .toggle-btn {
+  flex: 1; padding: 10px 0; text-align: center; font-size: 0.85em; font-weight: 600;
+  cursor: pointer; background: transparent; color: var(--text-secondary);
+  border: none; font-family: var(--font-sans); transition: var(--transition);
+}
+.action-toggle .toggle-btn.active-buy { background: var(--up-bg); color: var(--price-up); }
+.action-toggle .toggle-btn.active-sell { background: var(--down-bg); color: var(--price-down); }
+
+/* Type toggle */
+.type-toggle { display: flex; gap: 4px; }
+.type-toggle .type-btn {
+  flex: 1; padding: 8px 0; text-align: center; font-size: 0.78em; font-weight: 500;
+  cursor: pointer; background: transparent; color: var(--text-tertiary);
+  border: 1px solid var(--border-color); border-radius: var(--radius-btn);
+  font-family: var(--font-sans); transition: var(--transition);
+}
+.type-toggle .type-btn.active { background: rgba(99,102,241,0.1); color: var(--accent-indigo); border-color: var(--accent-indigo); }
+
+/* Submit */
+.btn-buy { background: rgba(239,68,68,0.15); border-color: var(--price-up); color: var(--price-up); font-weight: 600; }
+.btn-buy:hover { background: rgba(239,68,68,0.25); }
+.btn-sell { background: rgba(34,197,94,0.15); border-color: var(--price-down); color: var(--price-down); font-weight: 600; }
+.btn-sell:hover { background: rgba(34,197,94,0.25); }
+
+/* Account overview */
+.account-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+
+/* Signal cards */
+.signal-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.signal-card:last-child { border-bottom: none; }
+.signal-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+.signal-badge { padding: 3px 10px; border-radius: var(--radius-badge); font-size: 0.72em; font-weight: 600; }
+.signal-buy { background: var(--up-bg); color: var(--price-up); }
+.signal-sell { background: var(--down-bg); color: var(--price-down); }
+.signal-hold { background: rgba(161,161,170,0.1); color: var(--text-secondary); }
+.confidence-bar { width: 60px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.confidence-bar .fill { height: 100%; border-radius: 2px; }
+
+/* Status badges */
+.status-pending { background: rgba(245,158,11,0.1); color: var(--yellow); }
+.status-filled { background: rgba(99,102,241,0.1); color: var(--accent-indigo); }
+.status-cancelled { background: rgba(161,161,170,0.1); color: var(--text-tertiary); }
+
+/* Sections */
+.sim-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 16px;
+}
+.sim-sections { display: flex; flex-direction: column; gap: 16px; }
+
+/* Tab bar for orders/portfolio/signals */
+.tab-bar { display: flex; gap: 4px; margin-bottom: 12px; }
+.tab-bar .tab {
+  padding: 6px 16px; border-radius: var(--radius-btn);
+  font-size: 0.78em; font-weight: 500; cursor: pointer;
+  color: var(--text-secondary); transition: var(--transition);
+  border: none; background: transparent; font-family: var(--font-sans);
+}
+.tab-bar .tab.active { background: rgba(99,102,241,0.1); color: var(--accent-indigo); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Order cost preview */
+.cost-preview {
+  font-size: 0.78em; color: var(--text-tertiary); font-family: var(--font-mono);
+  padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.04);
+  margin-top: 8px;
+}
+
+/* Table action buttons */
+.action-btn {
+  padding: 3px 10px; border-radius: var(--radius-badge); font-size: 0.72em;
+  font-weight: 600; cursor: pointer; border: none; font-family: var(--font-sans);
+  transition: var(--transition);
+}
+.action-btn-cancel { background: rgba(161,161,170,0.1); color: var(--text-secondary); }
+.action-btn-cancel:hover { background: rgba(161,161,170,0.2); }
+.action-btn-fill { background: rgba(99,102,241,0.1); color: var(--accent-indigo); }
+.action-btn-fill:hover { background: rgba(99,102,241,0.2); }
+.action-btn-sell-quick { background: var(--down-bg); color: var(--price-down); }
+.action-btn-sell-quick:hover { background: rgba(34,197,94,0.2); }
+.action-btn-buy-quick { background: var(--up-bg); color: var(--price-up); }
+.action-btn-buy-quick:hover { background: rgba(239,68,68,0.2); }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-tertiary); font-size: 0.85em; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .sim-grid { grid-template-columns: 1fr; }
+  .account-grid { grid-template-columns: repeat(2, 1fr); }
+  .order-panel { grid-template-columns: 1fr; }
+  .order-panel .full { grid-column: span 1; }
+}
+@media (max-width: 480px) {
+  .account-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/backtests" class="nav-link">回測結果</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+    <a href="/screener" class="nav-link">智慧篩選</a>
+    <a href="/simulator" class="nav-link active">模擬交易</a>
+  </nav>
+</header>
+
+<!-- Mobile Tab Bar -->
+<div class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item"><span class="tab-icon">&#128176;</span>首頁</a>
+    <a href="/trading" class="tab-item"><span class="tab-icon">&#128200;</span>策略</a>
+    <a href="/chipdata" class="tab-item"><span class="tab-icon">&#127974;</span>籌碼</a>
+    <a href="/screener" class="tab-item"><span class="tab-icon">&#128269;</span>篩選</a>
+    <a href="/simulator" class="tab-item active"><span class="tab-icon">&#127919;</span>模擬</a>
+  </div>
+</div>
+
+<!-- Content -->
+<div class="page-content">
+
+  <!-- Account Overview -->
+  <div class="section-title">帳戶概覽</div>
+  <div class="account-grid" id="account-grid">
+    <div class="metric-card">
+      <div class="label">總資產</div>
+      <div class="value" id="acct-total">--</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">可用現金</div>
+      <div class="value" id="acct-cash">--</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">持倉市值</div>
+      <div class="value" id="acct-position">--</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">已實現損益</div>
+      <div class="value" id="acct-realized">--</div>
+      <div class="change" id="acct-realized-pct"></div>
+    </div>
+    <div class="metric-card">
+      <div class="label">未實現損益</div>
+      <div class="value" id="acct-unrealized">--</div>
+    </div>
+  </div>
+
+  <!-- Main Grid: Order Panel + Tables -->
+  <div class="sim-grid">
+
+    <!-- Left: Order Panel -->
+    <div>
+      <div class="card">
+        <div class="card-title">下單面板</div>
+        <div class="order-panel" id="order-form">
+          <div class="form-group full">
+            <label>股票代號</label>
+            <input type="text" class="form-input" id="ord-symbol" placeholder="例: 2330" autocomplete="off">
+            <div id="symbol-hint" style="font-size:0.72em;color:var(--text-tertiary);min-height:1.2em"></div>
+          </div>
+
+          <div class="form-group full">
+            <label>買賣方向</label>
+            <div class="action-toggle">
+              <button class="toggle-btn active-buy" id="btn-action-buy" onclick="setAction('buy')">買入</button>
+              <button class="toggle-btn" id="btn-action-sell" onclick="setAction('sell')">賣出</button>
+            </div>
+          </div>
+
+          <div class="form-group full">
+            <label>委託類型</label>
+            <div class="type-toggle">
+              <button class="type-btn active" id="btn-type-limit" onclick="setType('limit')">限價</button>
+              <button class="type-btn" id="btn-type-market" onclick="setType('market')">市價</button>
+            </div>
+          </div>
+
+          <div class="form-group" id="price-group">
+            <label>價格 (TWD)</label>
+            <input type="number" class="form-input" id="ord-price" placeholder="0.00" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label>數量 (張)</label>
+            <input type="number" class="form-input" id="ord-qty" placeholder="1" min="1" value="1">
+          </div>
+
+          <div class="form-group full">
+            <label>備註</label>
+            <input type="text" class="form-input" id="ord-note" placeholder="選填">
+          </div>
+
+          <div class="cost-preview full" id="cost-preview"></div>
+
+          <div class="full">
+            <button class="btn btn-buy" id="btn-submit" onclick="submitOrder()" style="width:100%;padding:12px">
+              買入下單
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Tabs -->
+    <div class="sim-sections">
+      <div class="card">
+        <div class="tab-bar">
+          <button class="tab active" onclick="switchTab('portfolio')">持倉</button>
+          <button class="tab" onclick="switchTab('orders')">委託</button>
+          <button class="tab" onclick="switchTab('signals')">策略信號</button>
+        </div>
+
+        <!-- Portfolio Tab -->
+        <div class="tab-content active" id="tab-portfolio">
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>代號</th><th>名稱</th><th>均價</th><th>現價</th>
+                  <th>張數</th><th>損益</th><th>損益%</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="portfolio-body">
+                <tr><td colspan="8" class="empty-state">載入中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Orders Tab -->
+        <div class="tab-content" id="tab-orders">
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>時間</th><th>代號</th><th>方向</th><th>價格</th>
+                  <th>張數</th><th>狀態</th><th>來源</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="orders-body">
+                <tr><td colspan="8" class="empty-state">載入中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Signals Tab -->
+        <div class="tab-content" id="tab-signals">
+          <div id="signals-list">
+            <div class="empty-state">載入中...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FMT = v => {
+  if (v == null || isNaN(v)) return '--';
+  return Number(v).toLocaleString('zh-TW', {maximumFractionDigits: 0});
+};
+const FMT2 = v => {
+  if (v == null || isNaN(v)) return '--';
+  return Number(v).toLocaleString('zh-TW', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+};
+
+let orderAction = 'buy';
+let orderType = 'limit';
+let symbolNames = {};
+
+function setAction(a) {
+  orderAction = a;
+  const buyBtn = document.getElementById('btn-action-buy');
+  const sellBtn = document.getElementById('btn-action-sell');
+  const submitBtn = document.getElementById('btn-submit');
+  buyBtn.className = 'toggle-btn' + (a === 'buy' ? ' active-buy' : '');
+  sellBtn.className = 'toggle-btn' + (a === 'sell' ? ' active-sell' : '');
+  submitBtn.className = 'btn ' + (a === 'buy' ? 'btn-buy' : 'btn-sell');
+  submitBtn.textContent = a === 'buy' ? '買入下單' : '賣出下單';
+  updateCost();
+}
+
+function setType(t) {
+  orderType = t;
+  document.getElementById('btn-type-limit').className = 'type-btn' + (t === 'limit' ? ' active' : '');
+  document.getElementById('btn-type-market').className = 'type-btn' + (t === 'market' ? ' active' : '');
+  document.getElementById('price-group').style.display = t === 'market' ? 'none' : '';
+  updateCost();
+}
+
+function updateCost() {
+  const price = parseFloat(document.getElementById('ord-price').value) || 0;
+  const qty = parseInt(document.getElementById('ord-qty').value) || 0;
+  const el = document.getElementById('cost-preview');
+  if (orderType === 'limit' && price > 0 && qty > 0) {
+    const cost = price * qty * 1000;
+    el.textContent = (orderAction === 'buy' ? '預估金額：' : '預估收入：') + FMT(cost) + ' TWD';
+  } else if (orderType === 'market' && qty > 0) {
+    el.textContent = '市價單，成交時計算金額';
+  } else {
+    el.textContent = '';
+  }
+}
+
+// Symbol name lookup
+async function loadSymbolNames() {
+  try {
+    const resp = await fetch('/api/symbol-names');
+    symbolNames = await resp.json();
+  } catch(e) {}
+}
+
+document.getElementById('ord-symbol').addEventListener('input', function() {
+  const v = this.value.trim().toUpperCase();
+  const hint = document.getElementById('symbol-hint');
+  if (v && symbolNames[v]) {
+    hint.textContent = symbolNames[v];
+    hint.style.color = 'var(--accent-cyan)';
+  } else if (v) {
+    hint.textContent = '';
+  } else {
+    hint.textContent = '';
+  }
+});
+
+document.getElementById('ord-price').addEventListener('input', updateCost);
+document.getElementById('ord-qty').addEventListener('input', updateCost);
+
+// Submit order
+async function submitOrder() {
+  const symbol = document.getElementById('ord-symbol').value.trim().toUpperCase();
+  const price = parseFloat(document.getElementById('ord-price').value);
+  const qty = parseInt(document.getElementById('ord-qty').value);
+  const note = document.getElementById('ord-note').value.trim();
+  const name_zh = symbolNames[symbol] || '';
+
+  if (!symbol) return alert('請輸入股票代號');
+  if (qty <= 0 || isNaN(qty)) return alert('請輸入有效數量');
+  if (orderType === 'limit' && (!price || price <= 0)) return alert('限價單需要有效價格');
+
+  const body = {
+    symbol, action: orderAction, order_type: orderType,
+    price: orderType === 'limit' ? price : null,
+    quantity: qty, note, name_zh
+  };
+
+  try {
+    const resp = await fetch('/api/sim/order', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.error) return alert(data.error);
+    // Reset
+    document.getElementById('ord-symbol').value = '';
+    document.getElementById('ord-price').value = '';
+    document.getElementById('ord-qty').value = '1';
+    document.getElementById('ord-note').value = '';
+    document.getElementById('symbol-hint').textContent = '';
+    document.getElementById('cost-preview').textContent = '';
+    switchTab('orders');
+    refreshAll();
+  } catch(e) { alert('下單失敗: ' + e.message); }
+}
+
+// Cancel order
+async function cancelOrder(id) {
+  if (!confirm('確定取消此委託？')) return;
+  try {
+    const resp = await fetch('/api/sim/cancel/' + id, {method: 'POST'});
+    const data = await resp.json();
+    if (data.error) return alert(data.error);
+    refreshAll();
+  } catch(e) { alert(e.message); }
+}
+
+// Fill order
+async function fillOrder(id) {
+  if (!confirm('確定模擬成交？')) return;
+  try {
+    const resp = await fetch('/api/sim/fill/' + id, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: '{}'
+    });
+    const data = await resp.json();
+    if (data.error) return alert(data.error);
+    refreshAll();
+  } catch(e) { alert(e.message); }
+}
+
+// Quick sell from portfolio
+function quickSell(symbol, name_zh, qty, price) {
+  document.getElementById('ord-symbol').value = symbol;
+  document.getElementById('ord-price').value = price || '';
+  document.getElementById('ord-qty').value = qty;
+  document.getElementById('symbol-hint').textContent = name_zh || '';
+  setAction('sell');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// Quick buy from signal
+function quickBuy(symbol, name_zh) {
+  document.getElementById('ord-symbol').value = symbol;
+  document.getElementById('symbol-hint').textContent = name_zh || '';
+  document.getElementById('symbol-hint').style.color = 'var(--accent-cyan)';
+  setAction('buy');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// Tab switching
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  // activate button
+  const tabs = document.querySelectorAll('.tab');
+  const map = {'portfolio': 0, 'orders': 1, 'signals': 2};
+  if (map[name] !== undefined) tabs[map[name]].classList.add('active');
+}
+
+// Render functions
+function renderAccount(data) {
+  document.getElementById('acct-total').textContent = FMT(data.total_value);
+  document.getElementById('acct-cash').textContent = FMT(data.cash);
+  document.getElementById('acct-position').textContent = FMT(data.position_value);
+
+  const rEl = document.getElementById('acct-realized');
+  rEl.textContent = (data.realized_pnl >= 0 ? '+' : '') + FMT(data.realized_pnl);
+  rEl.className = 'value ' + (data.realized_pnl >= 0 ? 'up' : 'down');
+
+  const uEl = document.getElementById('acct-unrealized');
+  uEl.textContent = (data.unrealized_pnl >= 0 ? '+' : '') + FMT(data.unrealized_pnl);
+  uEl.className = 'value ' + (data.unrealized_pnl >= 0 ? 'up' : 'down');
+
+  const pctEl = document.getElementById('acct-realized-pct');
+  const pct = (data.realized_pnl / 1000000 * 100);
+  pctEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+  pctEl.className = 'change ' + (pct >= 0 ? 'up' : 'down');
+}
+
+function renderPortfolio(rows) {
+  const tbody = document.getElementById('portfolio-body');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">尚無持倉</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const pnl = (r.current_price - r.avg_price) * r.quantity * 1000;
+    const pnlPct = r.avg_price > 0 ? ((r.current_price - r.avg_price) / r.avg_price * 100) : 0;
+    const cls = pnl >= 0 ? 'up' : 'down';
+    return `<tr>
+      <td>${r.symbol}</td>
+      <td style="font-family:var(--font-sans)">${r.name_zh || ''}</td>
+      <td>${FMT2(r.avg_price)}</td>
+      <td>${FMT2(r.current_price)}</td>
+      <td>${r.quantity}</td>
+      <td class="${cls}">${pnl >= 0 ? '+' : ''}${FMT(pnl)}</td>
+      <td class="${cls}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</td>
+      <td><button class="action-btn action-btn-sell-quick" onclick="quickSell('${r.symbol}','${(r.name_zh||'').replace(/'/g,"\\'")}',${r.quantity},${r.current_price||r.avg_price})">賣出</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderOrders(rows) {
+  const tbody = document.getElementById('orders-body');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">尚無委託</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const actionCls = r.action === 'buy' ? 'up' : 'down';
+    const actionLabel = r.action === 'buy' ? '買' : '賣';
+    const statusMap = {pending: '待成交', filled: '已成交', cancelled: '已取消'};
+    const statusCls = 'status-' + r.status;
+    const time = (r.created_at || '').slice(5, 16);
+    const priceDisplay = r.status === 'filled' ? FMT2(r.filled_price) : (r.price ? FMT2(r.price) : '市價');
+    let actions = '';
+    if (r.status === 'pending') {
+      actions = `<button class="action-btn action-btn-fill" onclick="fillOrder(${r.id})">成交</button>
+                 <button class="action-btn action-btn-cancel" onclick="cancelOrder(${r.id})" style="margin-left:4px">取消</button>`;
+    }
+    return `<tr>
+      <td style="font-family:var(--font-sans)">${time}</td>
+      <td>${r.symbol}</td>
+      <td class="${actionCls}">${actionLabel}</td>
+      <td>${priceDisplay}</td>
+      <td>${r.quantity}</td>
+      <td><span class="badge ${statusCls}">${statusMap[r.status] || r.status}</span></td>
+      <td style="font-family:var(--font-sans);font-size:0.82em;color:var(--text-tertiary)">${r.strategy || ''}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderSignals(rows) {
+  const el = document.getElementById('signals-list');
+  if (!rows.length) {
+    el.innerHTML = '<div class="empty-state">尚無策略信號</div>';
+    return;
+  }
+  el.innerHTML = rows.map(r => {
+    const sigMap = {buy: '買入', sell: '賣出', hold: '持有'};
+    const sigCls = 'signal-' + r.signal;
+    const barColor = r.signal === 'buy' ? 'var(--price-up)' : (r.signal === 'sell' ? 'var(--price-down)' : 'var(--text-tertiary)');
+    const btnCls = r.signal === 'buy' ? 'action-btn-buy-quick' : (r.signal === 'sell' ? 'action-btn-sell-quick' : '');
+    const btnAction = r.signal === 'buy'
+      ? `onclick="quickBuy('${r.symbol}','${(r.name_zh||'').replace(/'/g,"\\'")}')"`
+      : (r.signal === 'sell'
+        ? `onclick="document.getElementById('ord-symbol').value='${r.symbol}';setAction('sell');window.scrollTo({top:0,behavior:'smooth'})"`
+        : 'disabled');
+    return `<div class="signal-card">
+      <div class="signal-info">
+        <span class="signal-badge ${sigCls}">${sigMap[r.signal]}</span>
+        <div>
+          <div style="font-weight:600;font-size:0.88em">${r.symbol} <span style="color:var(--text-tertiary);font-weight:400">${r.name_zh || ''}</span></div>
+          <div style="font-size:0.7em;color:var(--text-tertiary)">${r.strategy} | 報酬 ${r.total_return}% | Sharpe ${r.sharpe}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="text-align:right">
+          <div class="confidence-bar"><div class="fill" style="width:${r.confidence}%;background:${barColor}"></div></div>
+          <div style="font-size:0.65em;color:var(--text-tertiary);margin-top:2px">${r.confidence}%</div>
+        </div>
+        <button class="action-btn ${btnCls}" ${btnAction}>${r.signal === 'buy' ? '買' : (r.signal === 'sell' ? '賣' : '--')}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Data fetching
+async function refreshAll() {
+  try {
+    const [acct, portfolio, orders, signals] = await Promise.all([
+      fetch('/api/sim/account').then(r => r.json()),
+      fetch('/api/sim/portfolio').then(r => r.json()),
+      fetch('/api/sim/orders').then(r => r.json()),
+      fetch('/api/sim/signals').then(r => r.json()),
+    ]);
+    renderAccount(acct);
+    renderPortfolio(portfolio);
+    renderOrders(orders);
+    renderSignals(signals);
+  } catch(e) {
+    console.error('refresh error:', e);
+  }
+}
+
+// Init
+loadSymbolNames();
+refreshAll();
+// Auto refresh every 30s
+setInterval(refreshAll, 30000);
+</script>
+</body>
+</html>

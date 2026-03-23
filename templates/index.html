@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>投資儀表板 — Symbiosis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.market-overview { grid-column: span 3; }
+.market-sentiment { grid-column: span 1; }
+.institutional-flow { grid-column: span 2; }
+.top-strategies { grid-column: span 2; }
+.latest-news { grid-column: span 1; }
+.eps-leaders { grid-column: span 1; }
+.screener-quick { grid-column: span 2; }
+
+/* Market ticker row */
+.ticker-row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0; }
+.ticker-card {
+  min-width: 160px; padding: 12px 16px;
+  background: rgba(255,255,255,0.02); border-radius: var(--radius-btn);
+  border: 1px solid var(--border-color); flex-shrink: 0;
+}
+.ticker-card .name { font-size: 0.72em; color: var(--text-tertiary); }
+.ticker-card .price { font-size: 1.2em; font-weight: 700; font-family: var(--font-mono); margin: 2px 0; }
+.ticker-card .pct { font-size: 0.78em; font-family: var(--font-mono); }
+
+/* Sentiment ring */
+.sentiment-ring { position: relative; width: 120px; height: 120px; margin: 0 auto 12px; }
+.sentiment-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.sentiment-ring .score { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+.sentiment-ring .score .num { font-size: 1.8em; font-weight: 700; font-family: var(--font-mono); }
+.sentiment-ring .score .label { font-size: 0.65em; color: var(--text-tertiary); }
+
+/* Flow item */
+.flow-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.85em; }
+.flow-item:last-child { border-bottom: none; }
+.flow-item .stock { font-weight: 500; }
+.flow-item .amount { font-family: var(--font-mono); }
+
+/* Strategy rank */
+.rank-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.rank-item .rank-num { font-size: 0.75em; font-weight: 700; color: var(--text-tertiary); width: 20px; }
+.rank-item .info { flex: 1; }
+.rank-item .info .sym { font-weight: 600; font-size: 0.88em; }
+.rank-item .info .strat { font-size: 0.7em; color: var(--text-tertiary); }
+.rank-item .ret { font-family: var(--font-mono); font-weight: 600; font-size: 0.9em; }
+
+/* News item */
+.news-item { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.news-item:last-child { border-bottom: none; }
+.news-item .title { font-size: 0.82em; margin-bottom: 4px; }
+.news-item .meta { font-size: 0.68em; color: var(--text-tertiary); display: flex; gap: 8px; align-items: center; }
+
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .market-overview, .market-sentiment, .institutional-flow, .top-strategies, .latest-news { grid-column: span 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link active">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/backtests" class="nav-link">回測結果</a>
+    <a href="/messages" class="nav-link">群組監聽</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+    <a href="/screener" class="nav-link">智慧篩選</a>
+  </nav>
+</header>
+
+<!-- Content -->
+<div class="page-content">
+  <div class="dashboard-grid">
+
+    <!-- Market Overview -->
+    <div class="card market-overview">
+      <div class="card-title">市場總覽</div>
+      <div class="ticker-row" id="ticker-row">
+        <div class="ticker-card skeleton" style="height:70px"></div>
+        <div class="ticker-card skeleton" style="height:70px"></div>
+        <div class="ticker-card skeleton" style="height:70px"></div>
+        <div class="ticker-card skeleton" style="height:70px"></div>
+        <div class="ticker-card skeleton" style="height:70px"></div>
+        <div class="ticker-card skeleton" style="height:70px"></div>
+      </div>
+    </div>
+
+    <!-- Market Sentiment -->
+    <div class="card market-sentiment">
+      <div class="card-title">市場情緒</div>
+      <div class="sentiment-ring" id="sentiment-ring">
+        <div class="score"><div class="num">--</div><div class="label">載入中</div></div>
+      </div>
+      <div class="grid-3" id="sentiment-counts" style="gap:8px;text-align:center">
+        <div><div style="font-size:.65em;color:var(--price-up)">看多</div><div style="font-family:var(--font-mono);font-weight:600" id="s-bull">--</div></div>
+        <div><div style="font-size:.65em;color:var(--text-tertiary)">中性</div><div style="font-family:var(--font-mono);font-weight:600" id="s-neutral">--</div></div>
+        <div><div style="font-size:.65em;color:var(--price-down)">看空</div><div style="font-family:var(--font-mono);font-weight:600" id="s-bear">--</div></div>
+      </div>
+    </div>
+
+    <!-- Institutional Flow -->
+    <div class="card institutional-flow">
+      <div class="card-title">法人動向 <span style="font-size:.8em;color:var(--text-tertiary)">(近日)</span></div>
+      <div id="flow-list">
+        <div class="skeleton" style="height:200px"></div>
+      </div>
+    </div>
+
+    <!-- Top Strategies -->
+    <div class="card top-strategies">
+      <div class="card-title">最佳策略 Top 5 <a href="/backtests" style="float:right;font-size:.85em">查看全部 →</a></div>
+      <div id="strategy-list">
+        <div class="skeleton" style="height:200px"></div>
+      </div>
+    </div>
+
+    <!-- Latest News -->
+    <div class="card latest-news">
+      <div class="card-title">最新情報 <a href="/intelligence" style="float:right;font-size:.85em">更多 →</a></div>
+      <div id="news-list">
+        <div class="skeleton" style="height:200px"></div>
+      </div>
+    </div>
+
+    <!-- Screener Quick -->
+    <div class="card screener-quick">
+      <div class="card-title">高殖利率精選 <a href="/screener" style="float:right;font-size:.85em">更多篩選 →</a></div>
+      <div id="yield-list">
+        <div class="skeleton" style="height:150px"></div>
+      </div>
+    </div>
+
+    <!-- EPS Leaders -->
+    <div class="card eps-leaders">
+      <div class="card-title">EPS 排行 <a href="/screener" style="float:right;font-size:.85em">查看 →</a></div>
+      <div id="eps-list">
+        <div class="skeleton" style="height:150px"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Mobile Tab Bar -->
+<nav class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item active"><span class="tab-icon">📊</span>儀表板</a>
+    <a href="/trading" class="tab-item"><span class="tab-icon">📈</span>監控</a>
+    <a href="/intelligence" class="tab-item"><span class="tab-icon">📰</span>情報</a>
+    <a href="/backtests" class="tab-item"><span class="tab-icon">🏆</span>回測</a>
+    <a href="/chipdata" class="tab-item"><span class="tab-icon">🏦</span>籌碼</a>
+  </div>
+</nav>
+
+<script>
+function escapeHtml(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+const SYMBOLS = {'^TWII':'台灣加權', '^GSPC':'S&P500', '^N225':'日經225', 'GC=F':'黃金', 'CL=F':'原油', 'BTC-USD':'比特幣'};
+
+async function loadDashboard() {
+  // Market tickers
+  const tickerRow = document.getElementById('ticker-row');
+  try {
+    const symResp = await fetch('/api/symbols');
+    const allSyms = await symResp.json();
+    const symMap = {};
+    allSyms.forEach(s => { symMap[s.symbol] = s; });
+
+    tickerRow.innerHTML = '';
+    for (const [sym, name] of Object.entries(SYMBOLS)) {
+      const data = symMap[sym];
+      if (!data) continue;
+      const mResp = await fetch(`/api/market/${sym}`);
+      const mData = await mResp.json();
+      if (mData.length < 2) continue;
+      const latest = mData[0];
+      const prev = mData[1];
+      const change = ((latest.close - prev.close) / prev.close * 100).toFixed(2);
+      const isUp = change >= 0;
+      tickerRow.innerHTML += `<div class="ticker-card">
+        <div class="name">${name}</div>
+        <div class="price" style="color:${isUp?'var(--price-up)':'var(--price-down)'}">${latest.close.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
+        <div class="pct" style="color:${isUp?'var(--price-up)':'var(--price-down)'}">${isUp?'+':''}${change}%</div>
+      </div>`;
+    }
+  } catch(e) { tickerRow.innerHTML = '<div style="color:var(--text-tertiary)">載入失敗</div>'; }
+
+  // Sentiment
+  try {
+    const mood = await (await fetch('/api/mood')).json();
+    const total = (mood.bullish||0) + (mood.bearish||0) + (mood.neutral||0);
+    const score = mood.avg_score || 5;
+    document.querySelector('.sentiment-ring .score .num').textContent = score.toFixed(1);
+    const dominant = mood.mood === 'bearish' ? '偏空' : mood.mood === 'bullish' ? '偏多' : '中性';
+    const dColor = mood.mood === 'bearish' ? 'var(--price-down)' : mood.mood === 'bullish' ? 'var(--price-up)' : 'var(--text-secondary)';
+    document.querySelector('.sentiment-ring .score .label').textContent = dominant;
+    document.querySelector('.sentiment-ring .score .label').style.color = dColor;
+    document.getElementById('s-bull').textContent = mood.bullish || 0;
+    document.getElementById('s-neutral').textContent = mood.neutral || 0;
+    document.getElementById('s-bear').textContent = mood.bearish || 0;
+  } catch {}
+
+  // Institutional flow (top buy/sell)
+  try {
+    const flow = await (await fetch('/api/top-flow')).json();
+    const flowList = document.getElementById('flow-list');
+    if (flow.date) {
+      const buyHtml = (flow.top_buy||[]).slice(0,5).map(r =>
+        `<div class="flow-item"><span class="stock">${r.symbol} ${escapeHtml(r.name_zh)}</span><span class="amount" style="color:var(--price-up)">+${(r.total_net||0).toLocaleString()}</span></div>`
+      ).join('');
+      const sellHtml = (flow.top_sell||[]).slice(0,5).map(r =>
+        `<div class="flow-item"><span class="stock">${r.symbol} ${escapeHtml(r.name_zh)}</span><span class="amount" style="color:var(--price-down)">${(r.total_net||0).toLocaleString()}</span></div>`
+      ).join('');
+      flowList.innerHTML = `<div style="font-size:.7em;color:var(--text-tertiary);margin-bottom:4px">${flow.date}</div>` +
+        '<div style="font-size:.72em;color:var(--price-up);font-weight:600;margin:6px 0 2px">買超 Top 5</div>' + buyHtml +
+        '<div style="font-size:.72em;color:var(--price-down);font-weight:600;margin:8px 0 2px">賣超 Top 5</div>' + sellHtml;
+    } else {
+      flowList.innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">無籌碼資料</div>';
+    }
+  } catch { document.getElementById('flow-list').innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">載入中...</div>'; }
+
+  // Top strategies
+  try {
+    const bt = await (await fetch('/api/backtests')).json();
+    bt.sort((a,b) => (b.total_return||0) - (a.total_return||0));
+    const nameResp = await fetch('/api/symbol-names');
+    const names = await nameResp.json();
+    document.getElementById('strategy-list').innerHTML = bt.slice(0, 5).map((b, i) => {
+      const ret = (b.total_return||0).toFixed(1);
+      const isUp = ret >= 0;
+      const sym = names[b.symbol] || b.symbol;
+      return `<div class="rank-item">
+        <span class="rank-num">#${i+1}</span>
+        <div class="info"><div class="sym">${sym} (${b.symbol})</div><div class="strat">${b.strategy}</div></div>
+        <span class="ret" style="color:${isUp?'var(--price-up)':'var(--price-down)'}">${isUp?'+':''}${ret}%</span>
+      </div>`;
+    }).join('');
+  } catch {}
+
+  // Latest news
+  try {
+    const news = await (await fetch('/api/intelligence')).json();
+    document.getElementById('news-list').innerHTML = news.slice(0, 5).map(n => {
+      const sentLabel = n.sentiment === 'bullish' ? '看多' : n.sentiment === 'bearish' ? '看空' : '中性';
+      const sentClass = n.sentiment === 'bullish' ? 'badge-up' : n.sentiment === 'bearish' ? 'badge-down' : 'badge-neutral';
+      return `<div class="news-item">
+        <div class="title">${n.title || ''}</div>
+        <div class="meta"><span class="badge ${sentClass}">${sentLabel}</span><span>${(n.published_at||'').slice(0,10)}</span></div>
+      </div>`;
+    }).join('');
+  } catch {}
+
+  // High Yield Quick
+  try {
+    const hy = await (await fetch('/api/screener/high-yield')).json();
+    document.getElementById('yield-list').innerHTML = (hy.stocks||[]).slice(0,5).map((s,i) => {
+      return `<div class="flow-item"><span class="stock"><a href="/chipdata/${s.symbol}" style="color:var(--accent-cyan)">${s.symbol}</a> ${escapeHtml(s.name_zh||'')}</span><span class="amount" style="color:var(--price-down)">${Number(s.dividend_yield||0).toFixed(1)}%</span></div>`;
+    }).join('') || '<div style="color:var(--text-tertiary);font-size:.85em">無資料</div>';
+  } catch {}
+
+  // EPS Leaders
+  try {
+    const eps = await (await fetch('/api/eps-leaders')).json();
+    document.getElementById('eps-list').innerHTML = eps.slice(0,5).map((s,i) => {
+      return `<div class="flow-item"><span class="stock">${s.symbol} ${escapeHtml(s.name_zh||'')}</span><span class="amount" style="color:var(--price-up);font-weight:600">${Number(s.eps||0).toFixed(1)}</span></div>`;
+    }).join('') || '<div style="color:var(--text-tertiary);font-size:.85em">無資料</div>';
+  } catch {}
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

@@ -3,23 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5">
-<title>Trading — 投資系統</title>
+<title>策略監控 — Symbiosis Invest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0a0e1a;--card:#131a2e;--border:#1e2d4a;
+  --bg:#09090b;--card:#121218;--border:#1e2d4a;
   --up:#ef4444;--down:#22c55e;--blue:#38bdf8;--purple:#a78bfa;
   --text:#e2e8f0;--dim:#64748b;--grid:#1a2240;
 }
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'SF Pro','Segoe UI',sans-serif;
-     min-height:100vh;overflow-x:hidden}
-a{color:var(--blue);text-decoration:none}
-
-/* Top nav */
-.topbar{background:#0d1224;border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.topbar .logo{font-weight:700;font-size:15px;color:var(--blue);white-space:nowrap}
-.topbar a.nav-link{color:var(--dim);font-size:13px;padding:4px 10px;border-radius:4px;transition:all .2s}
-.topbar a.nav-link:hover{color:var(--text);background:#1e2d4a}
+body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 
 /* Symbol selector */
 .symbol-bar{padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
@@ -125,11 +119,17 @@ td{padding:6px 10px;border-bottom:1px solid #0f1529;white-space:nowrap}
 </head>
 <body>
 
-<div class="topbar">
-  <span class="logo">Trading</span>
-  <a href="/" class="nav-link">首頁</a>
-  <a href="/backtests" class="nav-link">回測結果</a>
-</div>
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link active">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/backtests" class="nav-link">回測結果</a>
+    <a href="/messages" class="nav-link">群組監聽</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+  </nav>
+</header>
 
 <div class="symbol-bar">
   <select id="symbolSelect" class="symbol-select"><option>載入中...</option></select>
@@ -678,5 +678,14 @@ init();
 
 })();
 </script>
+<nav class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item"><span class="tab-icon">📊</span>儀表板</a>
+    <a href="/trading" class="tab-item active"><span class="tab-icon">📈</span>監控</a>
+    <a href="/intelligence" class="tab-item"><span class="tab-icon">📰</span>情報</a>
+    <a href="/backtests" class="tab-item"><span class="tab-icon">🏆</span>回測</a>
+    <a href="/chipdata" class="tab-item"><span class="tab-icon">🏦</span>籌碼</a>
+  </div>
+</nav>
 </body>
 </html>

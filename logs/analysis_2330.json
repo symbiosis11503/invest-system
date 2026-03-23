@@ -1,0 +1,139 @@
+{
+  "symbol": "2330",
+  "timestamp": "2026-03-23T02:25:23.854357",
+  "name": {
+    "name_zh": "台積電",
+    "exchange": "TWSE",
+    "category": "台股"
+  },
+  "valuation": {
+    "per": 27.78,
+    "pbr": 8.8,
+    "dividend_yield": 1.2,
+    "date": "2026-03-23"
+  },
+  "eps": [
+    {
+      "year": 2025,
+      "quarter": 4,
+      "eps": 66.26,
+      "revenue": 3809054272000.0,
+      "profit": 1715396780000.0
+    }
+  ],
+  "annual_eps": 66.26,
+  "institutional": [
+    {
+      "date": "2026-03-20",
+      "foreign_net": -6768881,
+      "trust_net": 0,
+      "dealer_net": -36100,
+      "total_net": -6804981
+    },
+    {
+      "date": "2026-03-19",
+      "foreign_net": -22789968,
+      "trust_net": 0,
+      "dealer_net": 451054,
+      "total_net": -22338914
+    },
+    {
+      "date": "2026-03-18",
+      "foreign_net": 373457,
+      "trust_net": 0,
+      "dealer_net": 721299,
+      "total_net": 1094756
+    },
+    {
+      "date": "2026-03-17",
+      "foreign_net": -230432,
+      "trust_net": 0,
+      "dealer_net": 905369,
+      "total_net": 674937
+    },
+    {
+      "date": "2026-03-16",
+      "foreign_net": -16174225,
+      "trust_net": 0,
+      "dealer_net": 660529,
+      "total_net": -15513696
+    }
+  ],
+  "foreign_buy_streak": {
+    "days": 0,
+    "total": 0
+  },
+  "margin": {
+    "margin_balance": 26115,
+    "short_balance": 7,
+    "date": "2026-03-20"
+  },
+  "revenue": [
+    {
+      "date": "2026-03-01",
+      "revenue": 317656613000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    },
+    {
+      "date": "2026-02-01",
+      "revenue": 401255128000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    },
+    {
+      "date": "2026-02",
+      "revenue": 317656613000.0,
+      "revenue_yoy": 22.171487229224354,
+      "revenue_mom": -20.834254609202155
+    },
+    {
+      "date": "2026-01-01",
+      "revenue": 335003568000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    },
+    {
+      "date": "2025-12-01",
+      "revenue": 343613802000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    },
+    {
+      "date": "2025-11-01",
+      "revenue": 367473051000.0,
+      "revenue_yoy": 0.0,
+      "revenue_mom": 0.0
+    }
+  ],
+  "revenue_growth_streak": 0,
+  "recent_prices": [
+    {
+      "date": "2026-03-20",
+      "close": 1840.0,
+      "volume": 53705722
+    },
+    {
+      "date": "2026-03-19",
+      "close": 1850.0,
+      "volume": 38750629
+    },
+    {
+      "date": "2026-03-18",
+      "close": 1905.0,
+      "volume": 25694925
+    },
+    {
+      "date": "2026-03-17",
+      "close": 1870.0,
+      "volume": 26754183
+    },
+    {
+      "date": "2026-03-16",
+      "close": 1845.0,
+      "volume": 35401289
+    }
+  ],
+  "score": 5.5,
+  "summary": "【台積電 (2330)】評分: 5.5/10 (中性)\nPER: 27.78 | 殖利率: 1.2% | 年化EPS: 66.26"
+}

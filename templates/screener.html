@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>智慧篩選 — Symbiosis Invest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+.screener-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.screener-tab {
+  padding: 8px 18px; border-radius: var(--radius-btn); font-size: 0.82em; cursor: pointer;
+  border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary);
+  transition: var(--transition); font-family: var(--font-sans);
+}
+.screener-tab:hover { border-color: var(--border-hover); }
+.screener-tab.active { background: rgba(99,102,241,0.1); border-color: var(--accent-indigo); color: var(--accent-indigo); }
+
+.result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.result-count { font-size: 0.82em; color: var(--text-tertiary); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/backtests" class="nav-link">回測結果</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+    <a href="/screener" class="nav-link active">智慧篩選</a>
+  </nav>
+</header>
+
+<div class="page-content">
+  <div class="screener-tabs">
+    <button class="screener-tab active" onclick="loadScreener('high-yield', this)">高殖利率</button>
+    <button class="screener-tab" onclick="loadScreener('eps-leaders', this)">EPS 排行</button>
+    <button class="screener-tab" onclick="loadScreener('foreign-buy', this)">外資連買</button>
+    <button class="screener-tab" onclick="loadScreener('revenue-growth', this)">營收連成長</button>
+    <button class="screener-tab" onclick="loadScreener('vix-panic', this)">VIX 恐慌</button>
+  </div>
+
+  <div class="card">
+    <div class="result-header">
+      <div class="card-title" id="screener-title">高殖利率篩選</div>
+      <span class="result-count" id="result-count">--</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table" id="screener-table">
+        <thead id="screener-head"><tr><th>載入中...</th></tr></thead>
+        <tbody id="screener-body"><tr><td class="skeleton" style="height:300px"></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<nav class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item"><span class="tab-icon">📊</span>儀表板</a>
+    <a href="/trading" class="tab-item"><span class="tab-icon">📈</span>監控</a>
+    <a href="/intelligence" class="tab-item"><span class="tab-icon">📰</span>情報</a>
+    <a href="/chipdata" class="tab-item"><span class="tab-icon">🏦</span>籌碼</a>
+    <a href="/screener" class="tab-item active"><span class="tab-icon">🔍</span>篩選</a>
+  </div>
+</nav>
+
+<script>
+function escapeHtml(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function fmt(n) { return n >= 0 ? `<span style="color:var(--price-up)">+${Number(n).toLocaleString()}</span>` : `<span style="color:var(--price-down)">${Number(n).toLocaleString()}</span>`; }
+
+const configs = {
+  'high-yield': {
+    title: '高殖利率篩選（殖利率>5% & PER<20）',
+    url: '/api/screener/high-yield',
+    heads: ['代碼','名稱','殖利率%','PER','PBR','EPS'],
+    row: s => `<tr>
+      <td><a href="/chipdata/${s.symbol}" style="color:var(--accent-cyan)">${s.symbol}</a></td>
+      <td>${escapeHtml(s.name_zh||'')}</td>
+      <td style="color:var(--price-down);font-weight:600;font-family:var(--font-mono)">${Number(s.dividend_yield||0).toFixed(2)}%</td>
+      <td style="font-family:var(--font-mono)">${s.per||'--'}</td>
+      <td style="font-family:var(--font-mono)">${s.pbr||'--'}</td>
+      <td style="font-family:var(--font-mono)">${s.eps||'--'}</td>
+    </tr>`,
+    dataKey: 'stocks',
+  },
+  'eps-leaders': {
+    title: 'EPS 排行 Top 20',
+    url: '/api/eps-leaders',
+    heads: ['代碼','名稱','EPS','PER','PBR','殖利率%'],
+    row: s => `<tr>
+      <td><a href="/chipdata/${s.symbol}" style="color:var(--accent-cyan)">${s.symbol}</a></td>
+      <td>${escapeHtml(s.name_zh||'')}</td>
+      <td style="color:var(--price-up);font-weight:600;font-family:var(--font-mono)">${Number(s.eps||0).toFixed(2)}</td>
+      <td style="font-family:var(--font-mono)">${s.per||'--'}</td>
+      <td style="font-family:var(--font-mono)">${s.pbr||'--'}</td>
+      <td style="font-family:var(--font-mono)">${s.dividend_yield ? Number(s.dividend_yield).toFixed(2)+'%' : '--'}</td>
+    </tr>`,
+    dataKey: null,
+  },
+  'foreign-buy': {
+    title: '外資連續買超排行',
+    url: '/api/screener/foreign-buy-streak',
+    heads: ['代碼','名稱','連買天數','累計淨買超'],
+    row: s => `<tr>
+      <td><a href="/chipdata/${s.symbol}" style="color:var(--accent-cyan)">${s.symbol}</a></td>
+      <td>${escapeHtml(s.name_zh||'')}</td>
+      <td style="color:var(--price-up);font-weight:700;font-family:var(--font-mono);font-size:1.1em">${s.streak_days} 天</td>
+      <td style="font-family:var(--font-mono)">${fmt(s.total_net)}</td>
+    </tr>`,
+    dataKey: 'stocks',
+  },
+  'revenue-growth': {
+    title: '營收連續成長篩選',
+    url: '/api/screener/revenue-growth',
+    heads: ['代碼','名稱','連成長月數','最新YoY%'],
+    row: s => `<tr>
+      <td><a href="/chipdata/${s.symbol}" style="color:var(--accent-cyan)">${s.symbol}</a></td>
+      <td>${escapeHtml(s.name_zh||'')}</td>
+      <td style="color:var(--price-up);font-weight:700;font-family:var(--font-mono)">${s.growth_months} 月</td>
+      <td style="font-family:var(--font-mono)">${fmt(s.latest_yoy)}%</td>
+    </tr>`,
+    dataKey: 'stocks',
+  },
+  'vix-panic': {
+    title: 'VIX 恐慌篩選（VIX>30 時啟動）',
+    url: '/api/screener/vix-panic',
+    heads: ['代碼','名稱','PER','PBR','殖利率%'],
+    row: s => `<tr>
+      <td><a href="/chipdata/${s.symbol}" style="color:var(--accent-cyan)">${s.symbol}</a></td>
+      <td>${escapeHtml(s.name_zh||'')}</td>
+      <td style="font-family:var(--font-mono)">${s.per||'--'}</td>
+      <td style="font-family:var(--font-mono)">${s.pbr||'--'}</td>
+      <td style="color:var(--price-down);font-family:var(--font-mono)">${s.dividend_yield ? Number(s.dividend_yield).toFixed(2)+'%' : '--'}</td>
+    </tr>`,
+    dataKey: 'stocks',
+  },
+};
+
+async function loadScreener(key, btn) {
+  document.querySelectorAll('.screener-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const cfg = configs[key];
+  document.getElementById('screener-title').textContent = cfg.title;
+  document.getElementById('screener-head').innerHTML = '<tr>' + cfg.heads.map(h => `<th>${h}</th>`).join('') + '</tr>';
+  document.getElementById('screener-body').innerHTML = '<tr><td colspan="' + cfg.heads.length + '" class="skeleton" style="height:200px"></td></tr>';
+
+  try {
+    const resp = await fetch(cfg.url);
+    const data = await resp.json();
+    const stocks = cfg.dataKey ? (data[cfg.dataKey] || []) : (Array.isArray(data) ? data : []);
+    document.getElementById('result-count').textContent = `${stocks.length} 檔`;
+
+    if (key === 'vix-panic') {
+      const vixInfo = `<tr><td colspan="${cfg.heads.length}" style="padding:12px;color:var(--text-secondary);font-size:0.85em">VIX: ${data.vix || '--'} | ${data.panic_mode ? '🔴 恐慌模式啟動' : '🟢 正常'}</td></tr>`;
+      document.getElementById('screener-body').innerHTML = vixInfo + stocks.map(cfg.row).join('');
+    } else {
+      document.getElementById('screener-body').innerHTML = stocks.length ?
+        stocks.map(cfg.row).join('') :
+        `<tr><td colspan="${cfg.heads.length}" style="text-align:center;color:var(--text-tertiary);padding:40px">無符合條件的股票</td></tr>`;
+    }
+  } catch(e) {
+    document.getElementById('screener-body').innerHTML = `<tr><td colspan="${cfg.heads.length}" style="color:var(--text-tertiary);text-align:center">載入失敗</td></tr>`;
+  }
+}
+
+loadScreener('high-yield', document.querySelector('.screener-tab.active'));
+</script>
+</body>
+</html>
