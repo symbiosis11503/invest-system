@@ -356,6 +356,25 @@ def generate_report():
         traceback.print_exc()
         report.append("\n🤖 AI 市場總結：生成失敗")
 
+    # 泡沫指標
+    try:
+        conn = get_conn()
+        bubble_indicators = []
+        symbols = {'^VIX': 'VIX', 'HG=F': '銅', 'GC=F': '金', 'USDTWD=X': 'TWD', '^TNX': '10Y殖利率', 'BTC-USD': 'BTC'}
+        for sym, name in symbols.items():
+            row = conn.execute("SELECT close FROM market_data WHERE symbol=? ORDER BY date DESC LIMIT 1", (sym,)).fetchone()
+            if row:
+                bubble_indicators.append(f"{name}: {row['close']:,.2f}")
+        conn.close()
+        if bubble_indicators:
+            report.append("\n🫧 泡沫指標")
+            report.append("─" * 35)
+            # VIX 燈號
+            for sym_data in bubble_indicators:
+                report.append(f"• {sym_data}")
+    except Exception:
+        pass
+
     # 市場行情
     markets = get_market_summary()
     if markets:
