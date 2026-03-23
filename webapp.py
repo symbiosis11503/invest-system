@@ -307,9 +307,13 @@ def index():
         mood_html = ""
 
     # TG 監聽卡片
-    tg_total = conn.execute("SELECT COUNT(*) FROM tg_messages").fetchone()[0]
-    tg_groups = conn.execute("SELECT COUNT(DISTINCT group_name) FROM tg_messages").fetchone()[0]
     tg_html = ""
+    try:
+        tg_total = conn.execute("SELECT COUNT(*) FROM tg_messages").fetchone()[0]
+        tg_groups = conn.execute("SELECT COUNT(DISTINCT group_name) FROM tg_messages").fetchone()[0]
+    except Exception:
+        tg_total = 0
+        tg_groups = 0
     if tg_total > 0:
         tg_html = f"""<a href="/messages" style="text-decoration:none"><div class="card" style="display:flex;align-items:center;gap:16px;cursor:pointer">
             <div style="font-size:2rem">📨</div>
