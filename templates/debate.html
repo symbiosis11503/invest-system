@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI 辯論分析 — Symbiosis Invest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+.debate-input { display: flex; gap: 12px; margin-bottom: 24px; }
+.debate-input input {
+  flex: 1; padding: 12px 16px; border-radius: var(--radius-btn);
+  border: 1px solid var(--border-color); background: rgba(255,255,255,0.03);
+  color: var(--text-primary); font-family: var(--font-mono); font-size: 1em;
+}
+.debate-input input:focus { border-color: var(--accent-indigo); outline: none; }
+.debate-input button {
+  padding: 12px 24px; border-radius: var(--radius-btn); border: none;
+  background: var(--accent-indigo); color: #fff; font-weight: 600; cursor: pointer;
+  font-family: var(--font-sans); transition: var(--transition);
+}
+.debate-input button:hover { opacity: 0.9; }
+.debate-input button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.debate-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.debate-panel {
+  padding: 20px; border-radius: var(--radius-card);
+  border: 1px solid var(--border-color); background: rgba(255,255,255,0.02);
+}
+.debate-panel.arbiter { grid-column: span 2; }
+.debate-panel h3 { margin: 0 0 12px; font-size: 1em; }
+.debate-panel .content {
+  font-size: 0.88em; line-height: 1.7; color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.bull h3 { color: #22c55e; }
+.bear h3 { color: #ef4444; }
+.arbiter h3 { color: #3b82f6; }
+
+.score-badge {
+  display: inline-block; padding: 4px 12px; border-radius: 20px;
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.9em;
+}
+.score-high { background: rgba(34,197,94,0.15); color: #22c55e; }
+.score-mid { background: rgba(234,179,8,0.15); color: #eab308; }
+.score-low { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+.loading { text-align: center; padding: 40px; color: var(--text-tertiary); }
+.loading .spinner {
+  width: 40px; height: 40px; border: 3px solid var(--border-color);
+  border-top-color: var(--accent-indigo); border-radius: 50%;
+  animation: spin 1s linear infinite; margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.data-summary {
+  margin-bottom: 16px; padding: 16px; border-radius: var(--radius-card);
+  border: 1px solid var(--border-color); background: rgba(255,255,255,0.02);
+  font-size: 0.82em; color: var(--text-tertiary); font-family: var(--font-mono);
+}
+
+@media (max-width: 768px) {
+  .debate-panels { grid-template-columns: 1fr; }
+  .debate-panel.arbiter { grid-column: span 1; }
+}
+</style>
+</head>
+<body>
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/backtests" class="nav-link">回測結果</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+    <a href="/screener" class="nav-link">智慧篩選</a>
+    <a href="/debate" class="nav-link active">AI 辯論</a>
+  </nav>
+</header>
+
+<main class="container">
+  <h1 style="margin-bottom:4px">AI 投資辯論分析</h1>
+  <p style="color:var(--text-tertiary);font-size:0.85em;margin-bottom:20px">
+    看多 / 看空 / 仲裁 三角色 AI 辯論 · Gemini 2.5 Flash 驅動
+  </p>
+
+  <div class="debate-input">
+    <input type="text" id="symbolInput" placeholder="輸入股票代號（如 2330）" maxlength="10">
+    <button id="debateBtn" onclick="startDebate()">開始辯論</button>
+  </div>
+
+  <div id="result"></div>
+</main>
+
+<script>
+async function startDebate() {
+  const symbol = document.getElementById('symbolInput').value.trim();
+  if (!symbol) return;
+
+  const btn = document.getElementById('debateBtn');
+  const result = document.getElementById('result');
+
+  btn.disabled = true;
+  btn.textContent = '分析中...';
+  result.innerHTML = `<div class="loading"><div class="spinner"></div>正在辯論分析 ${symbol}...<br><small>看多 → 看空 → 仲裁，約需 15-30 秒</small></div>`;
+
+  try {
+    const resp = await fetch(`/api/debate/${symbol}`);
+    const data = await resp.json();
+
+    if (data.error) {
+      result.innerHTML = `<div class="loading" style="color:#ef4444">${data.error}</div>`;
+      return;
+    }
+
+    const score = data.data?.score || 0;
+    const scoreClass = score >= 7 ? 'score-high' : score <= 3 ? 'score-low' : 'score-mid';
+    const name = data.name || symbol;
+
+    // 基本面摘要
+    const v = data.data?.valuation || {};
+    const streak = data.data?.foreign_buy_streak || {};
+    const summaryParts = [];
+    if (v.per) summaryParts.push(`PER: ${v.per}`);
+    if (v.dividend_yield) summaryParts.push(`殖利率: ${v.dividend_yield}%`);
+    if (data.data?.annual_eps) summaryParts.push(`年化EPS: ${data.data.annual_eps}`);
+    if (streak.days > 0) summaryParts.push(`外資連買 ${streak.days} 天`);
+    if (data.data?.revenue_growth_streak > 0) summaryParts.push(`營收連成長 ${data.data.revenue_growth_streak} 月`);
+
+    result.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <h2 style="margin:0">${name} (${symbol})</h2>
+        <span class="score-badge ${scoreClass}">系統評分 ${score}/10</span>
+      </div>
+      ${summaryParts.length ? `<div class="data-summary">${summaryParts.join(' · ')}</div>` : ''}
+      <div class="debate-panels">
+        <div class="debate-panel bull">
+          <h3>🐂 看多研究員</h3>
+          <div class="content">${data.debate?.bull?.response || '(無回應)'}</div>
+        </div>
+        <div class="debate-panel bear">
+          <h3>🐻 看空研究員</h3>
+          <div class="content">${data.debate?.bear?.response || '(無回應)'}</div>
+        </div>
+        <div class="debate-panel arbiter">
+          <h3>⚖️ 仲裁分析師</h3>
+          <div class="content">${data.debate?.arbiter?.response || '(無回應)'}</div>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    result.innerHTML = `<div class="loading" style="color:#ef4444">分析失敗: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '開始辯論';
+  }
+}
+
+// Enter key to submit
+document.getElementById('symbolInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startDebate();
+});
+</script>
+</body>
+</html>

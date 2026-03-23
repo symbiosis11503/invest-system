@@ -1689,6 +1689,12 @@ def api_cache_stats():
     return jsonify({'total_entries': len(_cache), 'active': active})
 
 
+@app.route("/debate")
+def debate_page():
+    """AI 辯論分析頁面"""
+    return render_template("debate.html")
+
+
 @app.route("/api/debate/<symbol>")
 def api_debate(symbol):
     """投資辯論 API — 多角色 AI 辯論分析個股"""
