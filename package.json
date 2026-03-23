@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "dev": "bun --cwd web dev",
+    "build": "bun --cwd web build",
+    "preview": "bun --cwd web preview"
+  }
+}
