@@ -1,6 +1,7 @@
 """投資系統 Web App — 家人手機瀏覽用"""
 import sqlite3
 import json
+import math
 import os
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, Response, send_file, render_template, send_from_directory, request
@@ -1459,6 +1460,168 @@ def api_ptt_sentiment():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/bubble-indicators")
+def api_bubble_indicators():
+    """泡沫指標 — 5 項市場風險訊號"""
+    conn = get_conn()
+    indicators = []
+
+    def _latest(symbol):
+        """取得 symbol 最新收盤價"""
+        row = conn.execute(
+            "SELECT close, date FROM market_data WHERE symbol=? ORDER BY date DESC LIMIT 1",
+            (symbol,)).fetchone()
+        return (row["close"], row["date"]) if row else (None, None)
+
+    def _close_30d_ago(symbol):
+        """取得約 30 天前的收盤價"""
+        row = conn.execute(
+            "SELECT close FROM market_data WHERE symbol=? AND date <= date('now', '-30 days') ORDER BY date DESC LIMIT 1",
+            (symbol,)).fetchone()
+        return row["close"] if row else None
+
+    def _level_color(value, green_max, yellow_max):
+        """根據閾值回傳 green/yellow/red"""
+        if value < green_max:
+            return "green"
+        elif value < yellow_max:
+            return "yellow"
+        return "red"
+
+    # 1) VIX 恐慌指數
+    vix_val, vix_date = _latest("^VIX")
+    if vix_val is not None:
+        vix_level = _level_color(vix_val, 20, 30)
+        desc_map = {"green": "市場恐慌程度正常", "yellow": "市場出現緊張情緒", "red": "市場極度恐慌"}
+        indicators.append({
+            "name": "VIX 恐慌指數",
+            "value": round(vix_val, 2),
+            "level": vix_level,
+            "threshold": {"green": "<20", "yellow": "20-30", "red": ">30"},
+            "description": desc_map[vix_level],
+        })
+
+    # 2) 銅金比
+    cu_val, _ = _latest("HG=F")
+    au_val, _ = _latest("GC=F")
+    if cu_val and au_val and au_val > 0:
+        ratio = cu_val / au_val
+        cu_30 = _close_30d_ago("HG=F")
+        au_30 = _close_30d_ago("GC=F")
+        change_30d = None
+        ratio_level = "green"
+        if cu_30 and au_30 and au_30 > 0:
+            old_ratio = cu_30 / au_30
+            if old_ratio > 0:
+                change_30d = round((ratio - old_ratio) / old_ratio * 100, 2)
+                if change_30d < -10:
+                    ratio_level = "red"
+                elif change_30d < -3:
+                    ratio_level = "yellow"
+        desc_map = {"green": "銅金比穩定，經濟正常", "yellow": "銅金比下滑，經濟放緩訊號", "red": "銅金比大跌，衰退警訊"}
+        ind = {
+            "name": "銅金比",
+            "value": round(ratio, 6),
+            "level": ratio_level,
+            "description": desc_map[ratio_level],
+        }
+        if change_30d is not None:
+            ind["change_30d"] = change_30d
+        indicators.append(ind)
+
+    # 3) 台幣匯率
+    twd_val, _ = _latest("USDTWD=X")
+    if twd_val is not None:
+        twd_30 = _close_30d_ago("USDTWD=X")
+        change_30d = None
+        twd_level = "green"
+        if twd_30 and twd_30 > 0:
+            change_30d = round((twd_val - twd_30) / twd_30 * 100, 2)
+            # USD/TWD 上升 = 台幣貶值
+            if change_30d > 5:
+                twd_level = "red"
+            elif change_30d > 2:
+                twd_level = "yellow"
+        desc_map = {"green": "台幣穩定", "yellow": "台幣走貶中", "red": "台幣急貶警訊"}
+        ind = {
+            "name": "台幣匯率",
+            "value": round(twd_val, 2),
+            "level": twd_level,
+            "description": desc_map[twd_level],
+        }
+        if change_30d is not None:
+            ind["change_30d"] = change_30d
+        indicators.append(ind)
+
+    # 4) 美債 10Y 殖利率
+    tnx_val, _ = _latest("^TNX")
+    if tnx_val is not None:
+        tnx_level = _level_color(tnx_val, 3.5, 4.5)
+        tnx_30 = _close_30d_ago("^TNX")
+        change_30d = None
+        if tnx_30 is not None:
+            change_30d = round(tnx_val - tnx_30, 2)
+        desc_map = {"green": "殖利率偏低，寬鬆環境", "yellow": "殖利率偏高", "red": "殖利率過高，緊縮壓力大"}
+        ind = {
+            "name": "美債 10Y 殖利率",
+            "value": round(tnx_val, 2),
+            "level": tnx_level,
+            "threshold": {"green": "<3.5", "yellow": "3.5-4.5", "red": ">4.5"},
+            "description": desc_map[tnx_level],
+        }
+        if change_30d is not None:
+            ind["change_30d"] = change_30d
+        indicators.append(ind)
+
+    # 5) BTC 30 日波動率 (年化)
+    btc_rows = conn.execute(
+        "SELECT close FROM market_data WHERE symbol='BTC-USD' ORDER BY date DESC LIMIT 31"
+    ).fetchall()
+    if len(btc_rows) >= 2:
+        closes = [r["close"] for r in btc_rows]
+        daily_returns = []
+        for i in range(len(closes) - 1):
+            if closes[i + 1] > 0:
+                daily_returns.append(closes[i] / closes[i + 1] - 1)
+        if daily_returns:
+            mean_r = sum(daily_returns) / len(daily_returns)
+            variance = sum((r - mean_r) ** 2 for r in daily_returns) / len(daily_returns)
+            annual_vol = math.sqrt(variance) * math.sqrt(252) * 100  # 百分比
+            btc_level = _level_color(annual_vol, 30, 60)
+            desc_map = {"green": "加密市場波動低", "yellow": "加密市場波動中等", "red": "加密市場劇烈波動"}
+            indicators.append({
+                "name": "BTC 30 日波動率",
+                "value": round(annual_vol, 1),
+                "level": btc_level,
+                "threshold": {"green": "<30", "yellow": "30-60", "red": ">60"},
+                "description": desc_map[btc_level],
+            })
+
+    conn.close()
+
+    # 綜合分數
+    score_map = {"green": 0, "yellow": 10, "red": 20}
+    total = sum(score_map.get(ind["level"], 0) for ind in indicators)
+    if indicators:
+        # 按 5 項滿分 100 等比例換算
+        overall_score = int(total / len(indicators) * 5)
+    else:
+        overall_score = 0
+    if overall_score <= 30:
+        overall_level = "green"
+    elif overall_score <= 60:
+        overall_level = "yellow"
+    else:
+        overall_level = "red"
+
+    return jsonify({
+        "updated": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "overall_score": overall_score,
+        "overall_level": overall_level,
+        "indicators": indicators,
+    })
 
 
 if __name__ == "__main__":
