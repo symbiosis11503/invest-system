@@ -8,6 +8,10 @@ venv/
 
 # Database
 db/*.db
+db/*.db-shm
+db/*.db-wal
+data/*.db
+*.db
 
 # Data
 data/*.csv
@@ -31,6 +35,9 @@ logs/*.json
 
 # Assets (local only)
 assets/
+
+# Reports
+reports/
 
 # IDE
 .vscode/
