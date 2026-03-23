@@ -248,10 +248,10 @@ def _groq_analyze(title: str, summary: str) -> dict | None:
 
 
 def _get_gemini_key() -> str | None:
-    """從 GEMINI_API_KEY ~ GEMINI_API_KEY_4 輪替取得 key"""
+    """從所有 GEMINI_API_KEY* 輪替取得 key（7 keys 分散 rate limit）"""
     global _gemini_key_index
     keys = []
-    for suffix in ['', '_APEX', '_ECHO', '_BACKUP']:
+    for suffix in ['', '_APEX', '_ECHO', '_BACKUP', '_B2', '_B3', '_SBS']:
         k = os.environ.get(f'GEMINI_API_KEY{suffix}')
         if k:
             keys.append(k)
