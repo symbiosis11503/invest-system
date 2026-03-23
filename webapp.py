@@ -1689,6 +1689,20 @@ def api_cache_stats():
     return jsonify({'total_entries': len(_cache), 'active': active})
 
 
+@app.route("/api/debate/<symbol>")
+def api_debate(symbol):
+    """投資辯論 API — 多角色 AI 辯論分析個股"""
+    try:
+        from investment_debate import run_debate, format_debate_report
+        result = run_debate(symbol)
+        fmt = request.args.get('format', 'json')
+        if fmt == 'text':
+            return format_debate_report(result), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == "__main__":
     print("投資系統 Web App 啟動中...")
     print("http://localhost:18900")
