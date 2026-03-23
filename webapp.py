@@ -715,6 +715,28 @@ def api_chipdata(symbol):
     })
 
 
+@app.route("/api/chipdata/summary")
+def api_chipdata_summary():
+    """最新一日三大法人合計淨買前 N 名"""
+    conn = get_conn()
+    try:
+        latest_date = conn.execute("SELECT MAX(date) FROM tw_institutional").fetchone()[0]
+        if not latest_date:
+            return jsonify({"latest_date": None, "rows": []})
+        rows = conn.execute("""
+            SELECT symbol, foreign_net, trust_net,
+                   COALESCE(dealer_net, 0) as dealer_net,
+                   (COALESCE(foreign_net,0)+COALESCE(trust_net,0)+COALESCE(dealer_net,0)) as total_net
+            FROM tw_institutional WHERE date = ?
+            ORDER BY ABS(COALESCE(foreign_net,0)+COALESCE(trust_net,0)+COALESCE(dealer_net,0)) DESC LIMIT 10
+        """, (latest_date,)).fetchall()
+    except Exception:
+        return jsonify({"latest_date": None, "rows": []})
+    finally:
+        conn.close()
+    return jsonify({"latest_date": latest_date, "rows": rows_to_dicts(rows)})
+
+
 @app.route("/api/chipdata")
 def api_chipdata_list():
     """有籌碼資料的股票清單"""
