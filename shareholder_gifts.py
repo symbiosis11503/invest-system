@@ -1,14 +1,30 @@
-"""股東紀念品追蹤器 — 抓取 + 儲存 + API"""
+"""股東紀念品追蹤器 — 抓取 + 儲存 + API
+來源優先序：
+  1. stockgift.tw    — 伺服器端渲染 HTML，資料最完整（含零股寄單、股代電話）
+  2. sinotrade.com.tw — __NEXT_DATA__ 內嵌 JSON（僅前 10 筆，但含 odd/div/price）
+  3. goodinfo.tw      — 舊版 fallback（易被封鎖）
+  4. histock.tw       — 舊版 fallback（易被封鎖）
+"""
 import sqlite3
+import ssl
 import os
 import json
 import time
 import re
-from datetime import datetime, date
+import urllib.request
+from datetime import datetime, date, timedelta
 from bs4 import BeautifulSoup
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "db/trades.db")
+
+# 共用 SSL context（stockgift.tw 憑證有問題）
+_SSL_CTX = ssl.create_default_context()
+_SSL_CTX.check_hostname = False
+_SSL_CTX.verify_mode = ssl.CERT_NONE
+
+_UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36')
 
 # ── DB ────────────────────────────────────────────────
 
@@ -108,21 +124,13 @@ def upsert_gifts_batch(gifts: list):
     return len(gifts)
 
 
-# ── Fetcher: Goodinfo ─────────────────────────────────
-
-def _goodinfo_headers():
-    return {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': 'https://goodinfo.tw/tw/index.asp',
-        'Connection': 'keep-alive',
-    }
-
+# ── 日期/數值解析 ─────────────────────────────────────
 
 def _parse_tw_date(s: str) -> str | None:
-    """解析民國或西元日期 → YYYY-MM-DD"""
+    """解析民國或西元日期 → YYYY-MM-DD
+    支援格式: 26/04/28, 115/06/15, 2026-06-15, 2026/06/15
+    stockgift.tw 用 YY/MM/DD (西元後兩碼)，goodinfo 用民國年 115/06/15
+    """
     if not s or not s.strip():
         return None
     s = s.strip().replace('/', '-')
@@ -130,11 +138,15 @@ def _parse_tw_date(s: str) -> str | None:
     m = re.match(r'^(\d{4})-(\d{1,2})-(\d{1,2})$', s)
     if m:
         return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
-    # 115/06/15 民國 format
+    # 2 or 3 digit year
     m = re.match(r'^(\d{2,3})-(\d{1,2})-(\d{1,2})$', s)
     if m:
         yr = int(m.group(1))
-        if yr < 200:
+        if yr < 100:
+            # 西元後兩碼: 26 → 2026 (stockgift.tw 格式)
+            yr += 2000
+        elif yr < 200:
+            # 民國年: 115 → 2026 (goodinfo 格式)
             yr += 1911
         return f"{yr}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
     return None
@@ -151,8 +163,222 @@ def _parse_value(s: str) -> float | None:
         return None
 
 
+def _http_get(url: str, timeout: int = 20) -> str | None:
+    """共用 HTTP GET，回傳 HTML/text"""
+    req = urllib.request.Request(url, headers={
+        'User-Agent': _UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+    })
+    try:
+        resp = urllib.request.urlopen(req, timeout=timeout, context=_SSL_CTX)
+        return resp.read().decode('utf-8')
+    except Exception as e:
+        print(f"[http] GET {url} failed: {e}")
+        return None
+
+
+# ── Fetcher 1: stockgift.tw (主要來源) ─────────────────
+
+def fetch_from_stockgift(year=None):
+    """從 stockgift.tw 抓股東紀念品 — 伺服器端渲染，資料最完整
+    Table 0: 已公告紀念品 (含品項、收購價、零股寄單、股代電話)
+    Table 1: 未公告紀念品 (含上次紀念品、歷史發放次數)
+    """
+    if year is None:
+        year = date.today().year
+
+    url = 'https://stockgift.tw/STOCK/Stock/Info'
+    html = _http_get(url)
+    if not html:
+        return []
+
+    if '紀念品' not in html:
+        print("[stockgift] blocked or empty response")
+        return []
+
+    soup = BeautifulSoup(html, 'html.parser')
+    tables = soup.find_all('table')
+    if not tables:
+        print("[stockgift] no tables found")
+        return []
+
+    results = []
+
+    # ── Table 0: 已公告 ──
+    # Headers: 持有, 股號, 股名, 股價, 最後買進日, 股東會日期, 委託截止日,
+    #          紀念品, 平台收購價, 平台代領費, 新增日期, 過往條件, 備註, 性質, 零股寄單, 股代, 股代電話
+    if len(tables) >= 1:
+        rows = tables[0].find_all('tr')
+        # 跳過前兩行（雙重 header）
+        for row in rows[2:]:
+            cells = row.find_all(['td', 'th'])
+            texts = [c.get_text(strip=True) for c in cells]
+            if len(texts) < 8:
+                continue
+
+            sid = texts[1].strip()
+            if not re.match(r'^\d{4,6}$', sid):
+                continue
+
+            # 股名可能帶有尾碼數字（如 "旭品1"、"南仁湖5"），清理之
+            stock_name = re.sub(r'\d+$', '', texts[2].strip())
+
+            gift_item = texts[7].strip() if len(texts) > 7 else None
+            if gift_item in ('', '尚未公布', '尚未公告'):
+                gift_item = None
+
+            # 收購價作為估值參考
+            gift_value = _parse_value(texts[8]) if len(texts) > 8 else None
+
+            # 零股寄單
+            frac = texts[14].strip() if len(texts) > 14 else ''
+            if frac in ('是', '可', 'Y', 'O'):
+                frac_eligible = 'Y'
+            elif frac in ('否', '不可', 'N', 'X'):
+                frac_eligible = 'N'
+            else:
+                frac_eligible = '未知'
+
+            gift = {
+                'stock_id': sid,
+                'stock_name': stock_name,
+                'meeting_date': _parse_tw_date(texts[5] if len(texts) > 5 else ''),
+                'last_buy_date': _parse_tw_date(texts[4] if len(texts) > 4 else ''),
+                'fractional_eligible': frac_eligible,
+                'gift_item': gift_item,
+                'gift_value': gift_value,
+                'year': year,
+                'source_url': url,
+            }
+            results.append(gift)
+
+    # ── Table 1: 未公告（補充尚未公告但已知日期的紀念品） ──
+    if len(tables) >= 2:
+        rows = tables[1].find_all('tr')
+        existing_ids = {r['stock_id'] for r in results}
+        for row in rows[2:]:
+            cells = row.find_all(['td', 'th'])
+            texts = [c.get_text(strip=True) for c in cells]
+            if len(texts) < 6:
+                continue
+
+            # Table 1 結構: 持有, 股號(含歷史), 股名, 股價, 最後買進日, 股東會日期, ...
+            # 股號欄位可能包含歷史資訊，需要特殊解析
+            raw_id = texts[1].strip()
+            # 從 "(3011)今皓\n..." 格式提取 ID，或直接取 4-6 碼數字
+            sid_match = re.match(r'^\(?(\d{4,6})\)?', raw_id)
+            if not sid_match:
+                continue
+            sid = sid_match.group(1)
+
+            if sid in existing_ids:
+                continue  # 已在 Table 0
+
+            stock_name = re.sub(r'\d+$', '', texts[2].strip())
+
+            # 上次紀念品 (Table 1 col 9)
+            last_gift = texts[9].strip() if len(texts) > 9 else ''
+
+            gift = {
+                'stock_id': sid,
+                'stock_name': stock_name,
+                'meeting_date': _parse_tw_date(texts[5] if len(texts) > 5 else ''),
+                'last_buy_date': _parse_tw_date(texts[4] if len(texts) > 4 else ''),
+                'fractional_eligible': '未知',
+                'gift_item': f'(未公告，上次: {last_gift})' if last_gift else None,
+                'gift_value': None,
+                'year': year,
+                'source_url': url,
+            }
+            results.append(gift)
+
+    announced = sum(1 for r in results if r['gift_item'] and '未公告' not in str(r['gift_item']))
+    print(f"[stockgift] parsed {len(results)} records ({announced} announced)")
+    return results
+
+
+# ── Fetcher 2: sinotrade.com.tw (永豐金證券) ──────────
+
+def fetch_from_sinotrade(year=None):
+    """從 sinotrade.com.tw/richclub/tools/gifts 抓取
+    利用 Next.js __NEXT_DATA__ 內嵌的 Apollo state JSON
+    注意：僅含前 10 筆（伺服器端渲染的第一頁），但欄位乾淨
+    """
+    if year is None:
+        year = date.today().year
+
+    url = 'https://www.sinotrade.com.tw/richclub/tools/gifts'
+    html = _http_get(url)
+    if not html:
+        return []
+
+    # 提取 __NEXT_DATA__
+    match = re.search(
+        r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
+        html, re.DOTALL
+    )
+    if not match:
+        print("[sinotrade] no __NEXT_DATA__ found")
+        return []
+
+    try:
+        data = json.loads(match.group(1))
+        page_props = data.get('props', {}).get('pageProps', {})
+        souvenir_list = page_props.get('list', {})
+        filtered = souvenir_list.get('filtered', [])
+        total = souvenir_list.get('total', 0)
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"[sinotrade] JSON parse error: {e}")
+        return []
+
+    results = []
+    for item in filtered:
+        souvenir = item.get('souvenir', '').strip()
+        if not souvenir or souvenir == '尚未公佈':
+            souvenir = None
+
+        # lastTransAt: "2026-04-28T00:00:00.000Z"
+        last_trans = item.get('lastTransAt', '')
+        last_buy = None
+        if last_trans:
+            m = re.match(r'^(\d{4}-\d{2}-\d{2})', last_trans)
+            if m:
+                last_buy = m.group(1)
+
+        gift = {
+            'stock_id': item.get('code', ''),
+            'stock_name': item.get('name', ''),
+            'meeting_date': None,  # sinotrade 不提供開會日
+            'last_buy_date': last_buy,
+            'fractional_eligible': 'Y' if item.get('odd') else 'N',
+            'gift_item': souvenir,
+            'gift_value': None,
+            'year': year,
+            'source_url': url,
+        }
+        if gift['stock_id']:
+            results.append(gift)
+
+    print(f"[sinotrade] parsed {len(results)} records (total on site: {total})")
+    return results
+
+
+# ── Fetcher 3: Goodinfo (舊版 fallback) ──────────────
+
+def _goodinfo_headers():
+    return {
+        'User-Agent': _UA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://goodinfo.tw/tw/index.asp',
+        'Connection': 'keep-alive',
+    }
+
+
 def fetch_from_goodinfo(year=None):
-    """從 Goodinfo 抓股東紀念品清單"""
+    """從 Goodinfo 抓股東紀念品清單（易被封鎖）"""
     if year is None:
         year = date.today().year
 
@@ -163,7 +389,6 @@ def fetch_from_goodinfo(year=None):
         import requests
         use_cffi = False
 
-    # Goodinfo 有上市 + 上櫃
     results = []
     for market in ['上市', '上櫃']:
         url = f'https://goodinfo.tw/tw/StockList.asp?MARKET_CAT={market}&INDUSTRY_CAT=股東會紀念品'
@@ -185,12 +410,10 @@ def fetch_from_goodinfo(year=None):
                 continue
 
             soup = BeautifulSoup(html, 'html.parser')
-            # 找包含紀念品資料的表格
             tables = soup.find_all('table', {'id': re.compile(r'tblStockList|tblDetail')})
             if not tables:
                 tables = soup.find_all('table', class_=re.compile(r'solid_1_padding_4'))
             if not tables:
-                # fallback: 找所有有 '代號' 標頭的表格
                 for t in soup.find_all('table'):
                     ths = [th.get_text(strip=True) for th in t.find_all('th')]
                     if '代號' in ths or '股票代號' in ths:
@@ -222,7 +445,6 @@ def fetch_from_goodinfo(year=None):
                             'year': year,
                             'source_url': url,
                         }
-                        # 零股欄位
                         frac = rec.get('零股', rec.get('零股可領', '')).strip()
                         if frac:
                             if frac in ('可', 'Y', '是', 'O', '○'):
@@ -232,7 +454,7 @@ def fetch_from_goodinfo(year=None):
                         results.append(gift)
 
             print(f"[goodinfo] {market}: parsed {len(results)} records")
-            time.sleep(3)  # 禮貌延遲
+            time.sleep(3)
 
         except Exception as e:
             print(f"[goodinfo] {market} error: {e}")
@@ -241,10 +463,10 @@ def fetch_from_goodinfo(year=None):
     return results
 
 
-# ── Fetcher: HiStock ──────────────────────────────────
+# ── Fetcher 4: HiStock (舊版 fallback) ──────────────
 
 def fetch_from_histock(year=None):
-    """從 HiStock 抓股東紀念品 (備用)"""
+    """從 HiStock 抓股東紀念品（易被封鎖）"""
     if year is None:
         year = date.today().year
 
@@ -257,7 +479,7 @@ def fetch_from_histock(year=None):
 
     url = f'https://histock.tw/stock/shareholdergift.aspx?y={year}'
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'User-Agent': _UA,
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'zh-TW,zh;q=0.9',
     }
@@ -277,7 +499,6 @@ def fetch_from_histock(year=None):
         soup = BeautifulSoup(html, 'html.parser')
         results = []
 
-        # 找 table
         table = soup.find('table', class_=re.compile(r'gvTB|tb-stock'))
         if not table:
             for t in soup.find_all('table'):
@@ -331,26 +552,47 @@ def fetch_from_histock(year=None):
 # ── 主要入口 ──────────────────────────────────────────
 
 def fetch_gifts(year=None):
-    """抓取股東紀念品，嘗試多個來源"""
+    """抓取股東紀念品，依序嘗試多個來源
+    優先序: stockgift.tw → sinotrade → goodinfo → histock
+    """
     if year is None:
         year = date.today().year
 
     init_gifts_table()
 
-    # 來源 1: Goodinfo
-    gifts = fetch_from_goodinfo(year)
+    # 來源 1: stockgift.tw (主力)
+    print("[fetch] Trying stockgift.tw...")
+    gifts = fetch_from_stockgift(year)
 
-    # 來源 2: HiStock (如果 Goodinfo 沒抓到)
+    # 來源 2: sinotrade (補充，合併進 gifts)
+    if len(gifts) < 50:
+        print("[fetch] stockgift.tw insufficient, trying sinotrade...")
+        sino_gifts = fetch_from_sinotrade(year)
+        if sino_gifts:
+            existing_ids = {g['stock_id'] for g in gifts}
+            for sg in sino_gifts:
+                if sg['stock_id'] not in existing_ids:
+                    gifts.append(sg)
+            print(f"[fetch] merged sinotrade, total: {len(gifts)}")
+
+    # 來源 3: Goodinfo fallback
+    if not gifts:
+        print("[fetch] Primary sources failed, trying Goodinfo...")
+        gifts = fetch_from_goodinfo(year)
+
+    # 來源 4: HiStock fallback
     if not gifts:
         print("[fetch] Goodinfo failed, trying HiStock...")
         gifts = fetch_from_histock(year)
 
     if gifts:
-        count = upsert_gifts_batch(gifts)
-        print(f"[fetch] Saved {count} shareholder gifts for {year}")
+        # 只保留有實際紀念品名稱的記錄（排除純「未公告」）
+        valid_gifts = [g for g in gifts if g.get('gift_item')]
+        count = upsert_gifts_batch(valid_gifts) if valid_gifts else 0
+        print(f"[fetch] Saved {count} shareholder gifts for {year} (total parsed: {len(gifts)})")
         return count
 
-    print(f"[fetch] No gifts fetched for {year}. Sources may be blocked.")
+    print(f"[fetch] No gifts fetched for {year}. All sources failed.")
     print("[fetch] You can manually import via import_from_json()")
     return 0
 
@@ -398,7 +640,7 @@ def import_sample_data():
 
 
 def get_all_gifts(year=None, month=None):
-    """查詢所有紀念品"""
+    """查詢所有紀念品，含最新股價"""
     conn = get_conn()
     sql = "SELECT * FROM shareholder_gifts WHERE 1=1"
     params = []
@@ -410,15 +652,31 @@ def get_all_gifts(year=None, month=None):
         params.append(month)
     sql += " ORDER BY last_buy_date ASC, meeting_date ASC"
     rows = conn.execute(sql, params).fetchall()
+    gifts = [dict(r) for r in rows]
+
+    # Batch fetch latest prices from market_data
+    if gifts:
+        stock_ids = list({g['stock_id'] for g in gifts})
+        placeholders = ','.join('?' for _ in stock_ids)
+        symbols = [sid + '.TW' for sid in stock_ids]
+        price_rows = conn.execute(f"""
+            SELECT symbol, close FROM market_data
+            WHERE symbol IN ({placeholders})
+            AND date = (SELECT MAX(date) FROM market_data WHERE symbol = market_data.symbol)
+        """, symbols).fetchall()
+        price_map = {r['symbol'].replace('.TW', ''): r['close'] for r in price_rows}
+        for g in gifts:
+            g['last_price'] = price_map.get(g['stock_id'])
+
     conn.close()
-    return [dict(r) for r in rows]
+    return gifts
 
 
 def get_upcoming_gifts(days=30):
     """查詢即將截止買進的紀念品"""
     conn = get_conn()
     today = date.today().isoformat()
-    future = (date.today() + __import__('datetime').timedelta(days=days)).isoformat()
+    future = (date.today() + timedelta(days=days)).isoformat()
     rows = conn.execute("""
         SELECT * FROM shareholder_gifts
         WHERE last_buy_date >= ? AND last_buy_date <= ?
@@ -438,6 +696,18 @@ if __name__ == "__main__":
         import_sample_data()
     elif len(sys.argv) > 1 and sys.argv[1] == '--import' and len(sys.argv) > 2:
         import_from_json(sys.argv[2])
+    elif len(sys.argv) > 1 and sys.argv[1] == '--stockgift':
+        # 單獨測試 stockgift.tw
+        gifts = fetch_from_stockgift()
+        print(f"Got {len(gifts)} from stockgift.tw")
+        for g in gifts[:5]:
+            print(f"  {g['stock_id']} {g['stock_name']} | {g['gift_item']} | 最後買進: {g['last_buy_date']}")
+    elif len(sys.argv) > 1 and sys.argv[1] == '--sinotrade':
+        # 單獨測試 sinotrade
+        gifts = fetch_from_sinotrade()
+        print(f"Got {len(gifts)} from sinotrade")
+        for g in gifts[:5]:
+            print(f"  {g['stock_id']} {g['stock_name']} | {g['gift_item']} | 最後買進: {g['last_buy_date']}")
     else:
         year = int(sys.argv[1]) if len(sys.argv) > 1 else date.today().year
         count = fetch_gifts(year)
