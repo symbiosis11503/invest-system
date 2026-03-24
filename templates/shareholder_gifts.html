@@ -56,6 +56,66 @@
 
 /* Search highlight */
 .highlight { background: rgba(99, 102, 241, 0.2); border-radius: 2px; }
+
+/* Sticky table header */
+.data-table thead th {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--card-bg);
+  box-shadow: 0 1px 0 var(--border-color);
+}
+
+/* Loading spinner */
+.loading-spinner {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; padding: 40px 0; color: var(--text-tertiary); font-size: 0.88em;
+}
+.loading-spinner .spin {
+  width: 22px; height: 22px; border: 2.5px solid var(--border-color);
+  border-top-color: var(--accent-indigo); border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Fractional eligible badge */
+.frac-badge {
+  display: inline-block; padding: 2px 10px; border-radius: var(--radius-badge);
+  font-size: 0.78em; font-weight: 600; line-height: 1.6;
+}
+.frac-badge.yes { background: rgba(34,197,94,0.15); color: #4ade80; }
+.frac-badge.no { background: rgba(239,68,68,0.1); color: var(--price-up); }
+.frac-badge.unknown { background: rgba(113,113,122,0.15); color: var(--text-tertiary); }
+
+/* Stock ID link */
+a.stock-link {
+  color: var(--accent-cyan); text-decoration: none; font-weight: 700;
+  border-bottom: 1px dashed transparent; transition: var(--transition);
+}
+a.stock-link:hover { border-bottom-color: var(--accent-cyan); opacity: 1; }
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 768px) {
+  .gift-stats { gap: 8px; }
+  .gift-stat { min-width: 0; flex: 1 1 calc(50% - 8px); padding: 8px 12px; }
+  .gift-stat .value { font-size: 1.1em; }
+  .gift-stat .label { font-size: 0.65em; }
+
+  .gift-controls { gap: 8px; }
+  .gift-controls select, .gift-controls input { font-size: 0.76em; padding: 7px 10px; }
+
+  .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  .data-table { font-size: 0.75em; min-width: 600px; }
+  .data-table th, .data-table td { padding: 6px 8px; white-space: nowrap; }
+
+  /* Hide less important columns on mobile */
+  .col-value, .col-photo { display: none; }
+}
+
+@media (max-width: 480px) {
+  .gift-stat { flex: 1 1 calc(50% - 6px); padding: 6px 10px; }
+  .gift-stat .value { font-size: 1em; }
+  .data-table { font-size: 0.7em; }
+}
 </style>
 </head>
 <body>
@@ -134,12 +194,12 @@
           <th class="sortable" data-col="last_price">股價 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="cost">成本 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="gift_item">紀念品 <span class="sort-icon"></span></th>
-          <th class="sortable" data-col="gift_value">估值 <span class="sort-icon"></span></th>
-          <th>照片</th>
+          <th class="sortable col-value" data-col="gift_value">估值 <span class="sort-icon"></span></th>
+          <th class="col-photo">照片</th>
         </tr>
       </thead>
       <tbody id="gift-body">
-        <tr><td colspan="10" class="no-data">載入中...</td></tr>
+        <tr><td colspan="10"><div class="loading-spinner"><div class="spin"></div>載入股東紀念品資料中...</div></td></tr>
       </tbody>
     </table>
   </div>
@@ -152,6 +212,8 @@ let sortCol = 'last_buy_date';
 let sortAsc = true;
 
 async function loadData() {
+  document.getElementById('gift-body').innerHTML =
+    '<tr><td colspan="10"><div class="loading-spinner"><div class="spin"></div>載入股東紀念品資料中...</div></td></tr>';
   try {
     const resp = await fetch('/api/shareholder-gifts');
     allData = await resp.json();
@@ -265,8 +327,6 @@ function renderTable() {
     else if (d <= 3) cls = 'row-urgent';
     else if (d <= 7) cls = 'row-warn';
 
-    const fracCls = g.fractional_eligible === 'Y' ? 'frac-yes' :
-                    g.fractional_eligible === 'N' ? 'frac-no' : 'frac-unknown';
     const fracText = g.fractional_eligible === 'Y' ? '可' :
                      g.fractional_eligible === 'N' ? '不可' : '未知';
 
@@ -283,17 +343,22 @@ function renderTable() {
     const photoQuery = encodeURIComponent('股東紀念品 ' + (g.stock_name || '') + ' ' + (g.gift_item || '') + ' ' + (g.year || ''));
     const photoLink = 'https://www.google.com/search?tbm=isch&q=' + photoQuery;
 
+    const fracBadgeCls = g.fractional_eligible === 'Y' ? 'yes' :
+                         g.fractional_eligible === 'N' ? 'no' : 'unknown';
+
+    const yahooUrl = `https://tw.stock.yahoo.com/quote/${g.stock_id}.TW`;
+
     return `<tr class="${cls}">
-      <td><strong>${g.stock_id}</strong></td>
+      <td><a href="${yahooUrl}" target="_blank" class="stock-link" title="Yahoo 股市 ${g.stock_id}">${g.stock_id}</a></td>
       <td>${g.stock_name || ''}</td>
       <td class="mono">${g.meeting_date || '-'}</td>
       <td class="mono">${g.last_buy_date || '-'}<br><span style="font-size:0.75em;color:${deadlineColor}">${deadlineNote}</span></td>
-      <td class="${fracCls}">${fracText}</td>
+      <td><span class="frac-badge ${fracBadgeCls}">${fracText}</span></td>
       <td class="mono" style="text-align:right">${priceStr}</td>
       <td class="mono" style="text-align:right">${costStr}<br><span style="font-size:0.7em;color:var(--text-tertiary)">${costLabel}</span></td>
       <td><a href="https://stockgift.tw/STOCK/Stock/Info/${g.stock_id}" target="_blank" style="color:var(--accent-indigo);text-decoration:none;" title="stockgift.tw 公告">${g.gift_item || '-'}</a></td>
-      <td class="gift-value mono">${g.gift_value ? '$' + g.gift_value : '-'}</td>
-      <td style="text-align:center">
+      <td class="gift-value mono col-value">${g.gift_value ? '$' + g.gift_value : '-'}</td>
+      <td class="col-photo" style="text-align:center">
         <a href="https://mops.twse.com.tw/mops/web/t108sb16_q1" target="_blank" title="MOPS 公開資訊觀測站" style="text-decoration:none;font-size:0.9em;">📋</a>
         <a href="${photoLink}" target="_blank" title="搜尋紀念品照片" style="text-decoration:none;font-size:0.9em;margin-left:4px;">📷</a>
       </td>
