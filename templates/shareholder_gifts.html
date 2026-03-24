@@ -291,7 +291,7 @@ function renderTable() {
       <td class="${fracCls}">${fracText}</td>
       <td class="mono" style="text-align:right">${priceStr}</td>
       <td class="mono" style="text-align:right">${costStr}<br><span style="font-size:0.7em;color:var(--text-tertiary)">${costLabel}</span></td>
-      <td>${g.gift_item || '-'}</td>
+      <td><a href="https://stockgift.tw/STOCK/Stock/Info/${g.stock_id}" target="_blank" style="color:var(--accent-indigo);text-decoration:none;" title="查看紀念品公告">${g.gift_item || '-'}</a></td>
       <td class="gift-value mono">${g.gift_value ? '$' + g.gift_value : '-'}</td>
       <td style="text-align:center"><a href="${photoLink}" target="_blank" title="搜尋紀念品照片" style="text-decoration:none;font-size:1.1em;">📷</a></td>
     </tr>`;
