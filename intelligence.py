@@ -16,19 +16,21 @@ from config import DB_PATH, load_env
 load_env()
 
 # ── RSS 來源 ──────────────────────────────────────────────
+# 2026-03-24: Google News RSS 已封鎖自動抓取（302→400），
+# 改用 CNYES/Yahoo/LTN 替代，保留 Google 搜尋作 fallback
 RSS_SOURCES = {
-    # 台灣財經
-    'google_tw_finance': 'https://news.google.com/rss/topics/CAAqIggKIhxDQkFTRHdvSkwyMHZNRGxqTUdZU0FucG9LQUFQAQ?hl=zh-TW&gl=TW&ceid=TW:zh-TW',
+    # 台灣財經 — 鉅亨網 (Anue CNYES)
+    'cnyes_headline': 'https://news.cnyes.com/rss/v1/news/category/headline',
+    'cnyes_tw_stock': 'https://news.cnyes.com/rss/v1/news/category/tw_stock',
+    'cnyes_us_stock': 'https://news.cnyes.com/rss/v1/news/category/us_stock',
+    'cnyes_forex': 'https://news.cnyes.com/rss/v1/news/category/forex',
+    'cnyes_wd_stock': 'https://news.cnyes.com/rss/v1/news/category/wd_stock',
+    # Yahoo 台灣股市
+    'yahoo_tw_market': 'https://tw.stock.yahoo.com/rss?category=tw-market',
+    # 自由時報
     'ltn_business': 'https://news.ltn.com.tw/rss/business.xml',
-    # 國際新聞
     'ltn_world': 'https://news.ltn.com.tw/rss/world.xml',
     'ltn_politics': 'https://news.ltn.com.tw/rss/politics.xml',
-    # 國際財經（英文）
-    'google_world_business': 'https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en',
-    # 地緣政治 / 戰爭
-    'google_geopolitics': 'https://news.google.com/rss/search?q=geopolitics+OR+war+OR+conflict+when:1d&hl=en-US&gl=US&ceid=US:en',
-    # 亞洲局勢
-    'google_asia': 'https://news.google.com/rss/search?q=Asia+economy+OR+China+trade+OR+Japan+economy+when:1d&hl=en-US&gl=US&ceid=US:en',
 }
 
 GOOGLE_SEARCH_TEMPLATE = (
@@ -101,10 +103,17 @@ def _fetch_rss(url: str) -> list[dict]:
     """抓取 RSS 並回傳 [{title, summary, url, published_at}]"""
     items = []
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=15, verify=False)
+        resp = requests.get(url, headers=HEADERS, timeout=15, verify=False,
+                            allow_redirects=True)
         resp.raise_for_status()
     except Exception as e:
         print(f"  [!] RSS 抓取失敗: {e}")
+        return items
+
+    # 檢查是否拿到 HTML 而非 XML（Google 會 redirect 到錯誤頁）
+    content_type = resp.headers.get('Content-Type', '')
+    if 'html' in content_type and 'xml' not in content_type:
+        print(f"  [!] 回傳 HTML 非 RSS（可能被封鎖）")
         return items
 
     try:

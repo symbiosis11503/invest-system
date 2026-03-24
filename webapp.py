@@ -1637,7 +1637,15 @@ def api_bubble_indicators():
 def api_weekly_summary():
     """本週市場週報摘要"""
     conn = get_conn()
-    # 最近 5 個交易日
+
+    # 用實際最新 market_data 日期當作週報終點
+    latest_row = conn.execute(
+        "SELECT MAX(date) as d FROM market_data"
+    ).fetchone()
+    period_end = latest_row['d'] if latest_row and latest_row['d'] else datetime.now().strftime('%Y-%m-%d')
+    week_ago = (datetime.strptime(period_end, '%Y-%m-%d') - timedelta(days=7)).strftime('%Y-%m-%d')
+
+    # ── 主要市場 ──
     key_symbols = {
         '^TWII': '台灣加權', '^GSPC': 'S&P 500', '^N225': '日經225',
         '^HSI': '恆生', 'GC=F': '黃金', 'BTC-USD': '比特幣', 'CL=F': '原油'
@@ -1659,29 +1667,119 @@ def api_weekly_summary():
                 'date_range': f"{rows[-1]['date']} ~ {rows[0]['date']}"
             })
 
-    # 本週新聞情緒統計
-    week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+    # ── 新聞情緒統計 ──
     mood = conn.execute("""
         SELECT sentiment, COUNT(*) as cnt, ROUND(AVG(score), 1) as avg_score
         FROM news_intelligence
-        WHERE analyzed_at > ? AND sentiment IN ('bullish','bearish','neutral')
+        WHERE analyzed_at >= ? AND sentiment IN ('bullish','bearish','neutral')
         GROUP BY sentiment
     """, (week_ago,)).fetchall()
     sentiment = {r['sentiment']: {'count': r['cnt'], 'avg_score': r['avg_score']} for r in mood}
 
-    # 本週最佳/最差策略
-    best = conn.execute("""
-        SELECT symbol, strategy, total_return, sharpe_ratio
-        FROM backtest_results ORDER BY total_return DESC LIMIT 5
-    """).fetchall()
+    # ── 本週高分新聞 Top 5 ──
+    top_news = []
+    try:
+        news_rows = conn.execute("""
+            SELECT title, source, score, sentiment, published_at
+            FROM news_intelligence
+            WHERE published_at >= ? AND score IS NOT NULL
+            ORDER BY score DESC LIMIT 5
+        """, (week_ago,)).fetchall()
+        top_news = rows_to_dicts(news_rows)
+    except Exception:
+        pass
+
+    # ── 法人資金流向（週合計）──
+    institutional_flow = {}
+    try:
+        flow = conn.execute("""
+            SELECT SUM(foreign_net) as foreign_net,
+                   SUM(trust_net) as trust_net,
+                   SUM(dealer_net) as dealer_net,
+                   SUM(total_net) as total_net,
+                   COUNT(DISTINCT date) as trading_days
+            FROM tw_institutional WHERE date >= ?
+        """, (week_ago,)).fetchone()
+        if flow and flow['trading_days']:
+            institutional_flow = {
+                'foreign_net': flow['foreign_net'] or 0,
+                'trust_net': flow['trust_net'] or 0,
+                'dealer_net': flow['dealer_net'] or 0,
+                'total_net': flow['total_net'] or 0,
+                'trading_days': flow['trading_days'],
+            }
+    except Exception:
+        pass
+
+    # ── 泡沫 / 風險指標摘要 ──
+    bubble_summary = {}
+    try:
+        vix_row = conn.execute(
+            "SELECT close, date FROM market_data WHERE symbol='^VIX' ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+        if vix_row:
+            vix_val = vix_row['close']
+            if vix_val < 20:
+                vix_level = 'green'
+            elif vix_val < 30:
+                vix_level = 'yellow'
+            else:
+                vix_level = 'red'
+            bubble_summary['vix'] = {
+                'value': round(vix_val, 2),
+                'level': vix_level,
+                'date': vix_row['date'],
+            }
+        # 台股融資餘額變化
+        margin_row = conn.execute("""
+            SELECT SUM(margin_balance_change) as margin_chg,
+                   SUM(short_balance_change) as short_chg
+            FROM tw_margin WHERE date >= ?
+        """, (week_ago,)).fetchone()
+        if margin_row and margin_row['margin_chg'] is not None:
+            bubble_summary['margin_change'] = {
+                'margin_balance_change': margin_row['margin_chg'],
+                'short_balance_change': margin_row['short_chg'] or 0,
+            }
+    except Exception:
+        pass
+
+    # ── 本週有交易訊號的策略 ──
+    top_strategies = []
+    try:
+        strat_rows = conn.execute("""
+            SELECT b.symbol, b.strategy, b.total_return, b.sharpe_ratio,
+                   MAX(t.ts) as last_trade
+            FROM backtest_results b
+            INNER JOIN trades t ON t.symbol = b.symbol AND t.strategy = b.strategy
+            WHERE t.ts >= ?
+            GROUP BY b.symbol, b.strategy
+            ORDER BY b.total_return DESC LIMIT 5
+        """, (week_ago,)).fetchall()
+        top_strategies = rows_to_dicts(strat_rows)
+    except Exception:
+        # trades 表可能結構不同或為空，fallback 到本週回測
+        try:
+            fallback = conn.execute("""
+                SELECT symbol, strategy, total_return, sharpe_ratio
+                FROM backtest_results
+                WHERE updated_at >= ?
+                ORDER BY total_return DESC LIMIT 5
+            """, (week_ago,)).fetchall()
+            top_strategies = rows_to_dicts(fallback)
+        except Exception:
+            pass
 
     conn.close()
     return jsonify({
         'updated': datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
-        'period': f"{week_ago} ~ {datetime.now().strftime('%Y-%m-%d')}",
+        'period': f"{week_ago} ~ {period_end}",
         'markets': markets,
         'sentiment': sentiment,
-        'top_strategies': rows_to_dicts(best),
+        'top_news': top_news,
+        'institutional_flow': institutional_flow,
+        'bubble_summary': bubble_summary,
+        'top_strategies': top_strategies,
     })
 
 
