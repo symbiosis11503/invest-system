@@ -40,6 +40,8 @@
 .frac-unknown { color: var(--text-tertiary); }
 
 .gift-value { color: var(--yellow); }
+.cost-low { color: #22c55e; }
+.cost-high { color: var(--text-secondary); }
 .no-data {
   text-align: center; padding: 60px 20px; color: var(--text-tertiary); font-size: 0.9em;
 }
@@ -89,6 +91,7 @@
     <div class="gift-stat"><div class="label">7天內截止</div><div class="value urgent" id="stat-urgent">--</div></div>
     <div class="gift-stat"><div class="label">30天內截止</div><div class="value warn" id="stat-upcoming">--</div></div>
     <div class="gift-stat"><div class="label">零股可領</div><div class="value" id="stat-frac">--</div></div>
+    <div class="gift-stat"><div class="label">本週截止</div><div class="value urgent" id="stat-thisweek">--</div></div>
   </div>
 
   <!-- Controls -->
@@ -110,9 +113,9 @@
       <option value="N">零股不可</option>
     </select>
     <select id="filter-status">
-      <option value="">狀態 — 全部</option>
-      <option value="upcoming">尚未截止</option>
+      <option value="upcoming" selected>尚未截止（可買）</option>
       <option value="urgent">7天內截止</option>
+      <option value="">全部（含已過期）</option>
     </select>
     <button class="btn" onclick="loadData()" style="font-size:0.78em;">重新載入</button>
   </div>
@@ -128,13 +131,14 @@
           <th class="sortable" data-col="last_buy_date">最後買進日 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="fractional_eligible">零股 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="last_price">股價 <span class="sort-icon"></span></th>
+          <th class="sortable" data-col="cost">成本 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="gift_item">紀念品 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="gift_value">估值 <span class="sort-icon"></span></th>
           <th>照片</th>
         </tr>
       </thead>
       <tbody id="gift-body">
-        <tr><td colspan="9" class="no-data">載入中...</td></tr>
+        <tr><td colspan="10" class="no-data">載入中...</td></tr>
       </tbody>
     </table>
   </div>
@@ -154,7 +158,7 @@ async function loadData() {
     renderTable();
   } catch (e) {
     document.getElementById('gift-body').innerHTML =
-      '<tr><td colspan="9" class="no-data">載入失敗: ' + e.message + '</td></tr>';
+      '<tr><td colspan="10" class="no-data">載入失敗: ' + e.message + '</td></tr>';
   }
 }
 
@@ -176,10 +180,17 @@ function renderStats() {
   const upcoming = allData.filter(g => { const d = daysUntil(g.last_buy_date); return d >= 0 && d <= 30; }).length;
   const frac = allData.filter(g => g.fractional_eligible === 'Y').length;
 
+  // 本週截止: 從今天到本週日 (day 0=Sun, so remaining = 7 - dayOfWeek, if Sun then 0)
+  const now = new Date(today());
+  const dayOfWeek = now.getDay(); // 0=Sun
+  const daysToSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+  const thisweek = allData.filter(g => { const d = daysUntil(g.last_buy_date); return d >= 0 && d <= daysToSunday; }).length;
+
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-urgent').textContent = urgent;
   document.getElementById('stat-upcoming').textContent = upcoming;
   document.getElementById('stat-frac').textContent = frac;
+  document.getElementById('stat-thisweek').textContent = thisweek;
 
   // Update info
   if (allData.length > 0 && allData[0].updated_at) {
@@ -217,6 +228,11 @@ function sortData(data) {
   return [...data].sort((a, b) => {
     let va = a[sortCol] ?? '';
     let vb = b[sortCol] ?? '';
+    if (sortCol === 'cost') {
+      va = a.last_price ? (a.fractional_eligible === 'Y' ? a.last_price : a.last_price * 1000) : 0;
+      vb = b.last_price ? (b.fractional_eligible === 'Y' ? b.last_price : b.last_price * 1000) : 0;
+      return sortAsc ? va - vb : vb - va;
+    }
     if (sortCol === 'gift_value' || sortCol === 'last_price') {
       va = va || 0; vb = vb || 0;
       return sortAsc ? va - vb : vb - va;
@@ -232,7 +248,7 @@ function renderTable() {
   const tbody = document.getElementById('gift-body');
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="no-data">沒有符合條件的資料</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="no-data">沒有符合條件的資料</td></tr>';
     return;
   }
 
@@ -249,9 +265,16 @@ function renderTable() {
     const fracText = g.fractional_eligible === 'Y' ? '可' :
                      g.fractional_eligible === 'N' ? '不可' : '未知';
 
-    const deadlineNote = d < 0 ? ' (已過)' : d <= 7 ? ` (${d}天)` : '';
+    const deadlineNote = d < 0 ? ' (已過)' : d === 0 ? ' (今天)' : ` (剩${d}天)`;
+    const deadlineColor = d < 0 ? 'var(--text-tertiary)' : d <= 3 ? 'var(--price-up)' : d <= 7 ? 'var(--yellow)' : 'var(--text-secondary)';
 
     const priceStr = g.last_price ? g.last_price.toFixed(2) : '-';
+    // 成本計算: 零股可領 = 1股成本, 否則 = 1張(1000股)成本
+    const isFrac = g.fractional_eligible === 'Y';
+    const costVal = g.last_price ? (isFrac ? g.last_price : g.last_price * 1000) : null;
+    const costStr = costVal ? (isFrac ? '$' + costVal.toFixed(0) : '$' + Math.round(costVal).toLocaleString()) : '-';
+    const costLabel = costVal ? (isFrac ? '(1股)' : '(1張)') : '';
+
     const photoQuery = encodeURIComponent('股東紀念品 ' + (g.stock_name || '') + ' ' + (g.gift_item || '') + ' ' + (g.year || ''));
     const photoLink = 'https://www.google.com/search?tbm=isch&q=' + photoQuery;
 
@@ -259,9 +282,10 @@ function renderTable() {
       <td><strong>${g.stock_id}</strong></td>
       <td>${g.stock_name || ''}</td>
       <td class="mono">${g.meeting_date || '-'}</td>
-      <td class="mono">${g.last_buy_date || '-'}${deadlineNote ? '<span style="font-size:0.8em;color:var(--price-up)">' + deadlineNote + '</span>' : ''}</td>
+      <td class="mono">${g.last_buy_date || '-'}<br><span style="font-size:0.75em;color:${deadlineColor}">${deadlineNote}</span></td>
       <td class="${fracCls}">${fracText}</td>
       <td class="mono" style="text-align:right">${priceStr}</td>
+      <td class="mono" style="text-align:right">${costStr}<br><span style="font-size:0.7em;color:var(--text-tertiary)">${costLabel}</span></td>
       <td>${g.gift_item || '-'}</td>
       <td class="gift-value mono">${g.gift_value ? '$' + g.gift_value : '-'}</td>
       <td style="text-align:center"><a href="${photoLink}" target="_blank" title="搜尋紀念品照片" style="text-decoration:none;font-size:1.1em;">📷</a></td>

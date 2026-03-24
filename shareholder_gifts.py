@@ -658,13 +658,12 @@ def get_all_gifts(year=None, month=None):
     if gifts:
         stock_ids = list({g['stock_id'] for g in gifts})
         placeholders = ','.join('?' for _ in stock_ids)
-        symbols = [sid + '.TW' for sid in stock_ids]
         price_rows = conn.execute(f"""
             SELECT symbol, close FROM market_data
             WHERE symbol IN ({placeholders})
             AND date = (SELECT MAX(date) FROM market_data WHERE symbol = market_data.symbol)
-        """, symbols).fetchall()
-        price_map = {r['symbol'].replace('.TW', ''): r['close'] for r in price_rows}
+        """, stock_ids).fetchall()
+        price_map = {r['symbol']: r['close'] for r in price_rows}
         for g in gifts:
             g['last_price'] = price_map.get(g['stock_id'])
 
