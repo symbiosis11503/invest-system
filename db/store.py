@@ -1,7 +1,9 @@
 """SQLite 交易紀錄儲存"""
 import sqlite3
 from datetime import datetime
-from config import DB_PATH
+from pathlib import Path
+
+DB_PATH = Path(__file__).parent / 'trades.db'
 
 
 def get_conn():

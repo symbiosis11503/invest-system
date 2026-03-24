@@ -3,12 +3,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import './style.css'
 import App from './App.vue'
 
-import Dashboard from './views/Dashboard.vue'
-import Trading from './views/Trading.vue'
-import Backtests from './views/Backtests.vue'
+import Dashboard    from './views/Dashboard.vue'
+import Trading      from './views/Trading.vue'
+import Backtests    from './views/Backtests.vue'
 import Intelligence from './views/Intelligence.vue'
-import ChipData from './views/ChipData.vue'
-import Messages from './views/Messages.vue'
+import ChipData     from './views/ChipData.vue'
+import Messages     from './views/Messages.vue'
+import Tasks        from './views/Tasks.vue'
+import Settings     from './views/Settings.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -19,6 +21,8 @@ const router = createRouter({
     { path: '/intelligence', component: Intelligence, meta: { title: '市場情報' } },
     { path: '/chipdata',     component: ChipData,     meta: { title: '籌碼分析' } },
     { path: '/messages',     component: Messages,     meta: { title: '群組監聽' } },
+    { path: '/tasks',        component: Tasks,        meta: { title: '任務控制台' } },
+    { path: '/settings',     component: Settings,     meta: { title: '系統設定' } },
   ]
 })
 

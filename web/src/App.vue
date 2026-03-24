@@ -12,6 +12,8 @@ const navItems = [
   { path: '/intelligence', label: '市場情報', icon: 'intel', code: 'INTL' },
   { path: '/chipdata',     label: '籌碼分析', icon: 'chip',  code: 'CHIP' },
   { path: '/messages',     label: '群組監聽', icon: 'msg',   code: 'MSGS' },
+  { path: '/tasks',        label: '任務控制', icon: 'task',  code: 'CTRL' },
+  { path: '/settings',     label: '系統設定', icon: 'cog',   code: 'CFG' },
 ]
 
 function isActive(path: string) {
@@ -89,6 +91,16 @@ function isActive(path: string) {
             </svg>
             <svg v-if="item.icon === 'msg'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <svg v-if="item.icon === 'task'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+              <line x1="8" y1="8" x2="12" y2="8"/>
+              <line x1="8" y1="16" x2="14" y2="16"/>
+            </svg>
+            <svg v-if="item.icon === 'cog'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
           </div>
           <span class="nav-label">{{ item.label }}</span>

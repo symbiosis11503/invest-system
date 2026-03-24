@@ -18,9 +18,7 @@ import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import DB_PATH
+DB_PATH = Path(__file__).parent.parent / 'db' / 'trades.db'
 
 
 # 全局 Session，重用 TCP 連線

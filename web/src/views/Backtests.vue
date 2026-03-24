@@ -59,6 +59,13 @@ function fmtMoney(v: number | null | undefined) {
 
 <template>
   <div class="backtests-page">
+    <!-- Quick action -->
+    <div class="quick-bar card">
+      <span class="qb-label">快速操作</span>
+      <router-link to="/tasks" class="btn-goto-tasks">▶ 執行回測 / 優化器</router-link>
+      <button class="btn-refresh-bt" @click="load">重新整理</button>
+    </div>
+
     <!-- Summary bar -->
     <div class="summary-bar" v-if="!loading && rows.length > 0">
       <div class="sum-item">
@@ -145,6 +152,27 @@ function fmtMoney(v: number | null | undefined) {
 
 <style scoped>
 .backtests-page { display: flex; flex-direction: column; gap: 14px; }
+
+.quick-bar {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 16px;
+}
+.qb-label {
+  font-family: 'Orbitron', monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.1em;
+}
+.btn-goto-tasks {
+  background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.3);
+  color: var(--neon); font-family: 'Orbitron', monospace; font-size: 10px;
+  font-weight: 600; letter-spacing: 0.08em; padding: 6px 16px;
+  text-decoration: none; transition: all 0.2s;
+  clip-path: polygon(5px 0%, 100% 0%, calc(100% - 5px) 100%, 0% 100%);
+}
+.btn-goto-tasks:hover { background: rgba(0,255,136,0.15); }
+.btn-refresh-bt {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  font-size: 11px; padding: 5px 12px; cursor: pointer; border-radius: 2px;
+  transition: all 0.15s; font-family: inherit;
+}
+.btn-refresh-bt:hover { color: var(--cyan); border-color: var(--cyan); }
 
 .summary-bar {
   display: flex;

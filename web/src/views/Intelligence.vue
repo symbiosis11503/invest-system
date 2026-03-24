@@ -11,10 +11,25 @@ interface Mood {
   avg_score: number; mood: string
 }
 
-const news    = ref<NewsItem[]>([])
-const mood    = ref<Mood | null>(null)
-const loading = ref(true)
-const filter  = ref('all') // 'all' | 'bullish' | 'bearish' | 'neutral'
+const news      = ref<NewsItem[]>([])
+const mood      = ref<Mood | null>(null)
+const loading   = ref(true)
+const filter    = ref('all') // 'all' | 'bullish' | 'bearish' | 'neutral'
+const running   = ref(false)
+const runMsg    = ref('')
+
+async function triggerCollect() {
+  running.value = true; runMsg.value = ''
+  try {
+    const res = await fetch('/api/run/intelligence', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' })
+    const data = await res.json()
+    runMsg.value = `任務已啟動 (${data.task_id}) — 請稍後重新整理`
+  } catch (e) {
+    runMsg.value = '啟動失敗'
+  } finally {
+    running.value = false
+  }
+}
 
 async function load() {
   loading.value = true
@@ -100,6 +115,16 @@ function parseKeywords(kw: string): string[] {
           <span class="mb-val font-num">{{ mood.neutral }}</span>
         </div>
       </div>
+    </div>
+
+    <!-- Action bar -->
+    <div class="action-bar">
+      <button class="btn-collect" @click="triggerCollect" :disabled="running">
+        <span v-if="running">收集中...</span>
+        <span v-else>▶ 收集 + 分析新聞</span>
+      </button>
+      <router-link to="/tasks" class="link-tasks">更多設定 →</router-link>
+      <span class="run-msg" v-if="runMsg">{{ runMsg }}</span>
     </div>
 
     <!-- Filter tabs -->
@@ -200,6 +225,23 @@ function parseKeywords(kw: string): string[] {
 .mb-val { font-size: 12px; min-width: 24px; text-align: right; color: var(--text2); }
 
 /* Filters */
+/* Action bar */
+.action-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.btn-collect {
+  background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.3);
+  color: var(--neon); font-family: 'Orbitron', monospace; font-size: 11px;
+  font-weight: 600; letter-spacing: 0.08em; padding: 8px 18px;
+  cursor: pointer; transition: all 0.2s;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+.btn-collect:hover:not(:disabled) { background: rgba(0,255,136,0.15); }
+.btn-collect:disabled { opacity: 0.5; cursor: not-allowed; }
+.link-tasks { font-size: 12px; color: var(--cyan); text-decoration: none; }
+.link-tasks:hover { color: var(--neon); }
+.run-msg { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
 .filter-tabs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
 .tab-btn {
