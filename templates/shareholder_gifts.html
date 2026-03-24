@@ -127,12 +127,14 @@
           <th class="sortable" data-col="meeting_date">召開日 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="last_buy_date">最後買進日 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="fractional_eligible">零股 <span class="sort-icon"></span></th>
+          <th class="sortable" data-col="last_price">股價 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="gift_item">紀念品 <span class="sort-icon"></span></th>
           <th class="sortable" data-col="gift_value">估值 <span class="sort-icon"></span></th>
+          <th>照片</th>
         </tr>
       </thead>
       <tbody id="gift-body">
-        <tr><td colspan="7" class="no-data">載入中...</td></tr>
+        <tr><td colspan="9" class="no-data">載入中...</td></tr>
       </tbody>
     </table>
   </div>
@@ -152,7 +154,7 @@ async function loadData() {
     renderTable();
   } catch (e) {
     document.getElementById('gift-body').innerHTML =
-      '<tr><td colspan="7" class="no-data">載入失敗: ' + e.message + '</td></tr>';
+      '<tr><td colspan="9" class="no-data">載入失敗: ' + e.message + '</td></tr>';
   }
 }
 
@@ -215,7 +217,7 @@ function sortData(data) {
   return [...data].sort((a, b) => {
     let va = a[sortCol] ?? '';
     let vb = b[sortCol] ?? '';
-    if (sortCol === 'gift_value') {
+    if (sortCol === 'gift_value' || sortCol === 'last_price') {
       va = va || 0; vb = vb || 0;
       return sortAsc ? va - vb : vb - va;
     }
@@ -230,7 +232,7 @@ function renderTable() {
   const tbody = document.getElementById('gift-body');
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="no-data">沒有符合條件的資料</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="no-data">沒有符合條件的資料</td></tr>';
     return;
   }
 
@@ -249,14 +251,20 @@ function renderTable() {
 
     const deadlineNote = d < 0 ? ' (已過)' : d <= 7 ? ` (${d}天)` : '';
 
+    const priceStr = g.last_price ? g.last_price.toFixed(2) : '-';
+    const photoQuery = encodeURIComponent('股東紀念品 ' + (g.stock_name || '') + ' ' + (g.gift_item || '') + ' ' + (g.year || ''));
+    const photoLink = 'https://www.google.com/search?tbm=isch&q=' + photoQuery;
+
     return `<tr class="${cls}">
       <td><strong>${g.stock_id}</strong></td>
       <td>${g.stock_name || ''}</td>
       <td class="mono">${g.meeting_date || '-'}</td>
       <td class="mono">${g.last_buy_date || '-'}${deadlineNote ? '<span style="font-size:0.8em;color:var(--price-up)">' + deadlineNote + '</span>' : ''}</td>
       <td class="${fracCls}">${fracText}</td>
+      <td class="mono" style="text-align:right">${priceStr}</td>
       <td>${g.gift_item || '-'}</td>
       <td class="gift-value mono">${g.gift_value ? '$' + g.gift_value : '-'}</td>
+      <td style="text-align:center"><a href="${photoLink}" target="_blank" title="搜尋紀念品照片" style="text-decoration:none;font-size:1.1em;">📷</a></td>
     </tr>`;
   }).join('');
 
