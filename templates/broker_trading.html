@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>分點主力 — Symbiosis Invest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+.broker-header { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.broker-header select, .broker-header input {
+  padding: 8px 14px; background: var(--card-bg); border: 1px solid var(--border-color);
+  border-radius: var(--radius-btn); color: var(--text-primary); font-size: 0.88em; font-family: var(--font-sans);
+}
+.broker-header select { min-width: 200px; }
+.broker-header input { width: 100px; }
+.broker-header .stock-name { font-size: 1.2em; font-weight: 700; }
+.broker-header .btn { padding: 8px 18px; background: var(--accent-indigo); color: #fff; border: none; border-radius: var(--radius-btn); cursor: pointer; font-size: 0.88em; font-weight: 600; }
+.broker-header .btn:hover { opacity: 0.85; }
+
+.period-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.period-tab {
+  padding: 6px 14px; border-radius: var(--radius-btn); font-size: 0.82em; font-weight: 500;
+  color: var(--text-secondary); background: var(--card-bg); border: 1px solid var(--border-color);
+  cursor: pointer; transition: var(--transition);
+}
+.period-tab:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+.period-tab.active { background: rgba(99,102,241,0.15); color: var(--accent-indigo); border-color: var(--accent-indigo); }
+
+.broker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .broker-grid { grid-template-columns: 1fr; } }
+
+.broker-meta { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.meta-item { padding: 10px 16px; background: var(--card-bg); border-radius: var(--radius-card); border: 1px solid var(--border-color); }
+.meta-item .label { font-size: 0.75em; color: var(--text-tertiary); margin-bottom: 2px; }
+.meta-item .value { font-size: 1.1em; font-weight: 700; font-family: var(--font-mono); }
+
+.val-up { color: var(--price-up); }
+.val-down { color: var(--price-down); }
+
+.rank-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; font-size: 0.72em; font-weight: 700;
+}
+.rank-1 { background: #f59e0b; color: #000; }
+.rank-2 { background: #94a3b8; color: #000; }
+.rank-3 { background: #b45309; color: #fff; }
+.rank-n { background: rgba(255,255,255,0.08); color: var(--text-tertiary); }
+
+.bar-cell { position: relative; }
+.bar-fill { position: absolute; top: 0; left: 0; height: 100%; opacity: 0.12; border-radius: 2px; }
+
+.loading { text-align: center; padding: 40px; color: var(--text-tertiary); }
+.loading .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid var(--border-color); border-top-color: var(--accent-indigo); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+    <a href="/broker-trading" class="nav-link active">分點主力</a>
+    <a href="/economic-calendar" class="nav-link">財經日曆</a>
+  </nav>
+</header>
+
+<div class="page-content">
+  <div class="broker-header">
+    <select id="stock-select" onchange="switchStock(this.value)">
+      <option value="">選擇股票...</option>
+    </select>
+    <input id="stock-input" type="text" placeholder="輸入代號" onkeydown="if(event.key==='Enter')goStock()">
+    <button class="btn" onclick="goStock()">查詢</button>
+    <span class="stock-name" id="stock-name"></span>
+  </div>
+
+  <div class="period-tabs" id="period-tabs">
+    <div class="period-tab active" data-period="1" onclick="setPeriod(1)">近1日</div>
+    <div class="period-tab" data-period="2" onclick="setPeriod(2)">近5日</div>
+    <div class="period-tab" data-period="3" onclick="setPeriod(3)">近10日</div>
+    <div class="period-tab" data-period="4" onclick="setPeriod(4)">近20日</div>
+    <div class="period-tab" data-period="5" onclick="setPeriod(5)">近40日</div>
+    <div class="period-tab" data-period="6" onclick="setPeriod(6)">近60日</div>
+  </div>
+
+  <!-- Meta -->
+  <div class="broker-meta" id="broker-meta" style="display:none">
+    <div class="meta-item"><div class="label">合計買超</div><div class="value val-up" id="meta-total-buy">--</div></div>
+    <div class="meta-item"><div class="label">合計賣超</div><div class="value val-down" id="meta-total-sell">--</div></div>
+    <div class="meta-item"><div class="label">平均買超成本</div><div class="value" id="meta-avg-buy" style="color:var(--accent-cyan)">--</div></div>
+    <div class="meta-item"><div class="label">平均賣超成本</div><div class="value" id="meta-avg-sell" style="color:var(--orange)">--</div></div>
+  </div>
+
+  <!-- Tables -->
+  <div class="broker-grid">
+    <div class="card">
+      <div class="card-title" style="color:var(--price-up); margin-bottom:8px">買超券商 TOP</div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="buy-table">
+          <thead><tr><th>#</th><th>券商</th><th>買進</th><th>賣出</th><th>買超</th><th>比重</th></tr></thead>
+          <tbody id="buy-tbody">
+            <tr><td colspan="6" class="loading">選擇股票開始查詢</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--price-down); margin-bottom:8px">賣超券商 TOP</div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="sell-table">
+          <thead><tr><th>#</th><th>券商</th><th>買進</th><th>賣出</th><th>賣超</th><th>比重</th></tr></thead>
+          <tbody id="sell-tbody">
+            <tr><td colspan="6" class="loading">選擇股票開始查詢</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item"><span class="tab-icon">📊</span>儀表板</a>
+    <a href="/trading" class="tab-item"><span class="tab-icon">📈</span>監控</a>
+    <a href="/chipdata" class="tab-item"><span class="tab-icon">🏦</span>籌碼</a>
+    <a href="/broker-trading" class="tab-item active"><span class="tab-icon">🏢</span>分點</a>
+    <a href="/intelligence" class="tab-item"><span class="tab-icon">📰</span>情報</a>
+  </div>
+</nav>
+
+<script>
+let names = {};
+let currentStock = '';
+let currentPeriod = 1;
+
+function escapeHtml(s) { return s ? String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : ''; }
+function fmtN(n) { return (n || 0).toLocaleString(); }
+function rankBadge(i) {
+  const cls = i <= 3 ? `rank-${i}` : 'rank-n';
+  return `<span class="rank-badge ${cls}">${i}</span>`;
+}
+
+async function init() {
+  try {
+    const [chips, nameData] = await Promise.all([
+      fetch('/api/chipdata').then(r => r.json()),
+      fetch('/api/symbol-names').then(r => r.json()),
+    ]);
+    names = nameData;
+    const sel = document.getElementById('stock-select');
+    const stockList = (chips || []).map(c => typeof c === 'string' ? c : c.symbol);
+    stockList.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s; o.textContent = `${s} ${names[s]||''}`;
+      sel.appendChild(o);
+    });
+    // Check URL path
+    const path = location.pathname.split('/');
+    if (path.length > 2 && path[2]) {
+      const sym = path[2];
+      document.getElementById('stock-input').value = sym;
+      sel.value = sym;
+      loadBroker(sym, currentPeriod);
+    }
+  } catch(e) { console.error(e); }
+}
+
+function switchStock(sym) {
+  if (!sym) return;
+  document.getElementById('stock-input').value = sym;
+  loadBroker(sym, currentPeriod);
+}
+
+function goStock() {
+  const input = document.getElementById('stock-input').value.trim();
+  if (!input) return;
+  const sel = document.getElementById('stock-select');
+  sel.value = input;
+  loadBroker(input, currentPeriod);
+}
+
+function setPeriod(p) {
+  currentPeriod = p;
+  document.querySelectorAll('.period-tab').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.period) === p);
+  });
+  if (currentStock) loadBroker(currentStock, p);
+}
+
+async function loadBroker(stockId, period) {
+  currentStock = stockId;
+  document.getElementById('stock-name').textContent = `${stockId} ${names[stockId]||''}`;
+  history.replaceState(null, '', `/broker-trading/${stockId}`);
+
+  // Show loading
+  const loadingHtml = '<tr><td colspan="6" class="loading"><div class="spinner"></div><div>查詢中...</div></td></tr>';
+  document.getElementById('buy-tbody').innerHTML = loadingHtml;
+  document.getElementById('sell-tbody').innerHTML = loadingHtml;
+  document.getElementById('broker-meta').style.display = 'none';
+
+  try {
+    const resp = await fetch(`/api/broker-trading?stock_id=${stockId}&period=${period}`);
+    if (!resp.ok) throw new Error('API error');
+    const data = await resp.json();
+
+    // Meta
+    const meta = data.meta || {};
+    if (meta.total_buy || meta.total_sell) {
+      document.getElementById('broker-meta').style.display = 'flex';
+      document.getElementById('meta-total-buy').textContent = meta.total_buy ? fmtN(meta.total_buy) + ' 張' : '--';
+      document.getElementById('meta-total-sell').textContent = meta.total_sell ? fmtN(meta.total_sell) + ' 張' : '--';
+      document.getElementById('meta-avg-buy').textContent = meta.avg_buy_cost || '--';
+      document.getElementById('meta-avg-sell').textContent = meta.avg_sell_cost || '--';
+    }
+
+    // Buy table
+    const buyList = data.buy_list || [];
+    const maxBuyNet = buyList.length ? Math.max(...buyList.map(b => b.net_qty || 0)) : 1;
+    document.getElementById('buy-tbody').innerHTML = buyList.map((b, i) => {
+      const net = b.net_qty || 0;
+      const pct = net / maxBuyNet * 100;
+      return `<tr>
+        <td>${rankBadge(i+1)}</td>
+        <td style="font-weight:600; white-space:nowrap">${escapeHtml(b.broker_name)}</td>
+        <td style="font-family:var(--font-mono); text-align:right">${fmtN(b.buy_qty)}</td>
+        <td style="font-family:var(--font-mono); text-align:right">${fmtN(b.sell_qty)}</td>
+        <td class="bar-cell" style="font-family:var(--font-mono); text-align:right; font-weight:600">
+          <div class="bar-fill" style="width:${pct}%; background:var(--price-up)"></div>
+          <span class="val-up">${fmtN(net)}</span>
+        </td>
+        <td style="color:var(--text-tertiary); font-size:0.85em">${escapeHtml(b.pct)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-tertiary)">無買超資料</td></tr>';
+
+    // Sell table
+    const sellList = data.sell_list || [];
+    const maxSellNet = sellList.length ? Math.max(...sellList.map(s => s.net_qty || 0)) : 1;
+    document.getElementById('sell-tbody').innerHTML = sellList.map((s, i) => {
+      const net = s.net_qty || 0;
+      const pct = net / maxSellNet * 100;
+      return `<tr>
+        <td>${rankBadge(i+1)}</td>
+        <td style="font-weight:600; white-space:nowrap">${escapeHtml(s.broker_name)}</td>
+        <td style="font-family:var(--font-mono); text-align:right">${fmtN(s.buy_qty)}</td>
+        <td style="font-family:var(--font-mono); text-align:right">${fmtN(s.sell_qty)}</td>
+        <td class="bar-cell" style="font-family:var(--font-mono); text-align:right; font-weight:600">
+          <div class="bar-fill" style="width:${pct}%; background:var(--price-down)"></div>
+          <span class="val-down">${fmtN(net)}</span>
+        </td>
+        <td style="color:var(--text-tertiary); font-size:0.85em">${escapeHtml(s.pct)}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-tertiary)">無賣超資料</td></tr>';
+
+  } catch(e) {
+    const errHtml = '<tr><td colspan="6" style="text-align:center; color:var(--price-up)">查詢失敗，請稍後再試</td></tr>';
+    document.getElementById('buy-tbody').innerHTML = errHtml;
+    document.getElementById('sell-tbody').innerHTML = errHtml;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

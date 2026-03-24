@@ -1882,6 +1882,35 @@ def api_shareholder_gifts_upcoming():
     return jsonify(get_upcoming_gifts(days=days))
 
 
+# ── 分點主力 ──────────────────────────────────────────
+
+@app.route("/broker-trading")
+@app.route("/broker-trading/<symbol>")
+def broker_trading_page(symbol=None):
+    return render_template('broker_trading.html')
+
+
+@app.route("/api/broker-trading")
+def api_broker_trading():
+    """分點主力資料
+    GET /api/broker-trading?stock_id=2330&period=1
+    period: 1=近1日, 2=近5日, 3=近10日, 4=近20日, 5=近40日, 6=近60日
+    """
+    from broker_trading import get_broker_trading, init_broker_table
+    init_broker_table()
+
+    stock_id = request.args.get('stock_id', '2330')
+    period = request.args.get('period', 1, type=int)
+    if period < 1 or period > 8:
+        period = 1
+
+    result = get_broker_trading(stock_id, period)
+    if not result:
+        return jsonify({"error": "無法取得資料", "stock_id": stock_id}), 404
+
+    return jsonify(result)
+
+
 if __name__ == "__main__":
     print("投資系統 Web App 啟動中...")
     print("http://localhost:18900")
