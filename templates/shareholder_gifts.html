@@ -113,7 +113,8 @@
       <option value="N">零股不可</option>
     </select>
     <select id="filter-status">
-      <option value="upcoming" selected>尚未截止（可買）</option>
+      <option value="announced" selected>已公告且可買</option>
+      <option value="upcoming">尚未截止（可買）</option>
       <option value="urgent">7天內截止</option>
       <option value="">全部（含已過期）</option>
     </select>
@@ -215,6 +216,10 @@ function getFiltered() {
       if (m !== parseInt(month)) return false;
     }
     if (frac && g.fractional_eligible !== frac) return false;
+    if (status === 'announced') {
+      if (!g.gift_item || g.gift_item === '未公告' || g.gift_item === '待確認') return false;
+      if (g.last_buy_date && g.last_buy_date < t) return false;
+    }
     if (status === 'upcoming' && (g.last_buy_date < t)) return false;
     if (status === 'urgent') {
       const d = daysUntil(g.last_buy_date);
