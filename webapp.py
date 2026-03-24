@@ -1811,6 +1811,32 @@ def api_debate(symbol):
         return jsonify({'error': str(e)}), 500
 
 
+# ── 股東紀念品 ─────────────────────────────────────────
+
+@app.route("/shareholder-gifts")
+def shareholder_gifts_page():
+    return render_template('shareholder_gifts.html')
+
+
+@app.route("/api/shareholder-gifts")
+def api_shareholder_gifts():
+    """股東紀念品列表，可選 ?year=2026&month=6"""
+    from shareholder_gifts import get_all_gifts, init_gifts_table
+    init_gifts_table()
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    return jsonify(get_all_gifts(year=year, month=month))
+
+
+@app.route("/api/shareholder-gifts/upcoming")
+def api_shareholder_gifts_upcoming():
+    """即將截止的紀念品 (未來 ?days=30 天)"""
+    from shareholder_gifts import get_upcoming_gifts, init_gifts_table
+    init_gifts_table()
+    days = request.args.get('days', 30, type=int)
+    return jsonify(get_upcoming_gifts(days=days))
+
+
 if __name__ == "__main__":
     print("投資系統 Web App 啟動中...")
     print("http://localhost:18900")

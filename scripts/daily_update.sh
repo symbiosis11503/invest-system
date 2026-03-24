@@ -159,6 +159,23 @@ else
     log "Weekend — skipping auto analysis & daily report"
 fi
 
+# 6. 股東紀念品更新 (每天都跑)
+TOTAL_STEPS=$((TOTAL_STEPS + 1))
+log "Updating shareholder gifts..."
+cd "$INVEST_DIR"
+$VENV -c "
+from shareholder_gifts import fetch_gifts, get_all_gifts
+count = fetch_gifts()
+total = len(get_all_gifts())
+print(f'Shareholder gifts: fetched {count}, total {total}')
+" >> "$LOG" 2>&1
+if [ $? -eq 0 ]; then
+    OK_STEPS=$((OK_STEPS + 1))
+else
+    log "ERROR: Shareholder gifts update failed"
+    tg_notify "⚠️ 投資系統: 股東紀念品更新失敗"
+fi
+
 log "========== DAILY UPDATE DONE ($OK_STEPS/$TOTAL_STEPS OK) =========="
 
 # 結尾摘要通知
