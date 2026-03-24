@@ -26,6 +26,12 @@
 .screener-quick { grid-column: span 2; }
 .gift-deadline { grid-column: span 1; }
 .eco-events { grid-column: span 1; }
+.broker-quick { grid-column: span 1; }
+.broker-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-color); font-size: .85em; }
+.broker-item:last-child { border: none; }
+.broker-item .stock { font-weight: 600; min-width: 48px; }
+.broker-item .broker { color: var(--text-secondary); flex: 1; margin: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.broker-item .net { font-family: var(--font-mono); font-weight: 600; }
 
 /* Market ticker row */
 .ticker-row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0; }
@@ -188,6 +194,14 @@
     <div class="card eps-leaders">
       <div class="card-title">EPS 排行 <a href="/screener" style="float:right;font-size:.85em">查看 →</a></div>
       <div id="eps-list">
+        <div class="skeleton" style="height:150px"></div>
+      </div>
+    </div>
+
+    <!-- Broker Quick -->
+    <div class="card broker-quick">
+      <div class="card-title">分點主力 <a href="/broker-trading" style="float:right;font-size:.85em">詳細 →</a></div>
+      <div id="broker-list">
         <div class="skeleton" style="height:150px"></div>
       </div>
     </div>
@@ -365,6 +379,27 @@ async function loadDashboard() {
       ecoList.innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">今日無財經事件</div>';
     }
   } catch { document.getElementById('eco-list').innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">載入失敗</div>'; }
+
+  // Broker Quick
+  try {
+    const brokerList = document.getElementById('broker-list');
+    const bRes = await fetch('/api/broker-trading?stock_id=2330&period=1');
+    if (bRes.ok) {
+      const bData = await bRes.json();
+      const topBuy = (bData.buy_list || []).slice(0, 5);
+      if (topBuy.length) {
+        brokerList.innerHTML = topBuy.map(b =>
+          `<div class="broker-item">
+            <span class="stock">${escapeHtml(bData.stock_id||'2330')}</span>
+            <span class="broker">${escapeHtml(b.broker_name)}</span>
+            <span class="net" style="color:${b.net_qty>0?'var(--red)':'var(--green)'}">${b.net_qty>0?'+':''}${b.net_qty.toLocaleString()}</span>
+          </div>`
+        ).join('');
+      } else {
+        brokerList.innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">無分點資料</div>';
+      }
+    }
+  } catch { document.getElementById('broker-list').innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">載入失敗</div>'; }
 }
 
 loadDashboard();
