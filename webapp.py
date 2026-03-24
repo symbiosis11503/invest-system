@@ -1802,7 +1802,8 @@ def api_debate(symbol):
     """投資辯論 API — 多角色 AI 辯論分析個股"""
     try:
         from investment_debate import run_debate, format_debate_report
-        result = run_debate(symbol)
+        max_rounds = min(int(request.args.get('rounds', 1)), 3)  # 最多 3 輪
+        result = run_debate(symbol, max_rounds=max_rounds)
         fmt = request.args.get('format', 'json')
         if fmt == 'text':
             return format_debate_report(result), 200, {'Content-Type': 'text/plain; charset=utf-8'}

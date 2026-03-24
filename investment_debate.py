@@ -161,8 +161,13 @@ def format_data_for_ai(report):
     return "\n".join(lines)
 
 
-def run_debate(symbol):
-    """對一檔股票執行完整辯論流程"""
+def run_debate(symbol, max_rounds=1):
+    """對一檔股票執行完整辯論流程
+
+    Args:
+        symbol: 股票代號
+        max_rounds: 辯論輪數 (1=標準, 2+=多輪深度辯論)
+    """
     # Step 1: 取得分析數據
     report = analyze_stock(symbol)
     data_text = format_data_for_ai(report)
@@ -172,39 +177,82 @@ def run_debate(symbol):
         "symbol": symbol,
         "name": name,
         "timestamp": datetime.now().isoformat(),
+        "max_rounds": max_rounds,
         "data": report,
-        "debate": {}
+        "debate": {"rounds": []}
     }
 
-    # Step 2: 看多研究員
-    bull_prompt = f"以下是 {name}({symbol}) 的最新分析數據：\n\n{data_text}\n\n請給出你的看多分析。"
-    bull_response = _call_gemini(ROLES["bull"]["prompt"], bull_prompt)
-    result["debate"]["bull"] = {
-        "role": ROLES["bull"]["name"],
-        "response": bull_response
-    }
+    bull_response = None
+    bear_response = None
 
-    # Step 3: 看空研究員
-    bear_prompt = f"以下是 {name}({symbol}) 的最新分析數據：\n\n{data_text}\n\n請給出你的看空分析。"
-    bear_response = _call_gemini(ROLES["bear"]["prompt"], bear_prompt)
-    result["debate"]["bear"] = {
-        "role": ROLES["bear"]["name"],
-        "response": bear_response
-    }
+    for round_num in range(1, max_rounds + 1):
+        round_data = {"round": round_num}
 
-    # Step 4: 仲裁分析師（讀多空論述）
+        # 看多研究員
+        if round_num == 1:
+            bull_prompt = f"以下是 {name}({symbol}) 的最新分析數據：\n\n{data_text}\n\n請給出你的看多分析。"
+        else:
+            bull_prompt = f"""以下是 {name}({symbol}) 第 {round_num} 輪辯論。
+
+【原始數據】
+{data_text}
+
+【上一輪你的看多觀點】
+{bull_response}
+
+【對手的看空觀點】
+{bear_response}
+
+請針對對手的論點進行反駁，並強化你的看多立場。聚焦在具體數據和邏輯漏洞。"""
+        bull_response = _call_gemini(ROLES["bull"]["prompt"], bull_prompt)
+        round_data["bull"] = {"role": ROLES["bull"]["name"], "response": bull_response}
+
+        # 看空研究員
+        if round_num == 1:
+            bear_prompt = f"以下是 {name}({symbol}) 的最新分析數據：\n\n{data_text}\n\n請給出你的看空分析。"
+        else:
+            bear_prompt = f"""以下是 {name}({symbol}) 第 {round_num} 輪辯論。
+
+【原始數據】
+{data_text}
+
+【上一輪你的看空觀點】
+{bear_response}
+
+【對手的看多觀點】
+{bull_response}
+
+請針對對手的論點進行反駁，並強化你的看空立場。聚焦在具體數據和邏輯漏洞。"""
+        bear_response = _call_gemini(ROLES["bear"]["prompt"], bear_prompt)
+        round_data["bear"] = {"role": ROLES["bear"]["name"], "response": bear_response}
+
+        result["debate"]["rounds"].append(round_data)
+
+    # 向下相容：保留 debate.bull / debate.bear 欄位
+    result["debate"]["bull"] = result["debate"]["rounds"][-1]["bull"]
+    result["debate"]["bear"] = result["debate"]["rounds"][-1]["bear"]
+
+    # 仲裁分析師（讀最終輪多空論述）
+    rounds_summary = ""
+    if max_rounds > 1:
+        for r in result["debate"]["rounds"]:
+            rounds_summary += f"\n--- 第 {r['round']} 輪 ---\n"
+            rounds_summary += f"【🐂 看多】{r['bull']['response'][:500]}\n"
+            rounds_summary += f"【🐻 看空】{r['bear']['response'][:500]}\n"
+
     arbiter_prompt = f"""以下是 {name}({symbol}) 的分析數據和多空辯論：
 
 【原始數據】
 {data_text}
 
-【🐂 看多研究員】
+{"【辯論歷程 (" + str(max_rounds) + " 輪)】" + rounds_summary if max_rounds > 1 else ""}
+【🐂 看多研究員 (最終立場)】
 {bull_response}
 
-【🐻 看空研究員】
+【🐻 看空研究員 (最終立場)】
 {bear_response}
 
-請綜合雙方觀點，給出你的仲裁報告。"""
+請綜合雙方觀點，給出你的仲裁報告。{"注意：這是 " + str(max_rounds) + " 輪深度辯論，請特別關注各輪論點的演變和最終共識。" if max_rounds > 1 else ""}"""
     arbiter_response = _call_gemini(ROLES["arbiter"]["prompt"], arbiter_prompt)
     result["debate"]["arbiter"] = {
         "role": ROLES["arbiter"]["name"],
@@ -217,17 +265,31 @@ def run_debate(symbol):
 def format_debate_report(result):
     """格式化辯論報告為人類可讀格式"""
     name = result.get("name", result["symbol"])
+    max_rounds = result.get("max_rounds", 1)
     lines = [
         f"{'='*50}",
         f"  📊 {name} ({result['symbol']}) 投資辯論報告",
-        f"  {result['timestamp'][:16]}",
+        f"  {result['timestamp'][:16]}  ({max_rounds} 輪辯論)",
         f"{'='*50}",
-        "",
-        f"🐂 【看多研究員】",
-        result["debate"]["bull"]["response"] or "(無回應)",
-        "",
-        f"🐻 【看空研究員】",
-        result["debate"]["bear"]["response"] or "(無回應)",
+    ]
+
+    rounds = result.get("debate", {}).get("rounds", [])
+    if rounds and max_rounds > 1:
+        for r in rounds:
+            lines.append(f"\n--- 第 {r['round']} 輪 ---")
+            lines.append(f"🐂 【看多】")
+            lines.append(r["bull"]["response"] or "(無回應)")
+            lines.append(f"🐻 【看空】")
+            lines.append(r["bear"]["response"] or "(無回應)")
+    else:
+        lines.append("")
+        lines.append(f"🐂 【看多研究員】")
+        lines.append(result["debate"]["bull"]["response"] or "(無回應)")
+        lines.append("")
+        lines.append(f"🐻 【看空研究員】")
+        lines.append(result["debate"]["bear"]["response"] or "(無回應)")
+
+    lines.extend([
         "",
         f"⚖️ 【仲裁分析師】",
         result["debate"]["arbiter"]["response"] or "(無回應)",
@@ -235,20 +297,25 @@ def format_debate_report(result):
         f"{'='*50}",
         f"  系統評分: {result['data'].get('score', 'N/A')}/10",
         f"{'='*50}",
-    ]
+    ])
     return "\n".join(lines)
 
 
 def main():
     if len(sys.argv) < 2:
-        print("用法: python investment_debate.py <symbol> [--json]")
+        print("用法: python investment_debate.py <symbol> [--json] [--rounds N]")
         return
 
     symbol = sys.argv[1]
     as_json = "--json" in sys.argv
+    max_rounds = 1
+    if "--rounds" in sys.argv:
+        idx = sys.argv.index("--rounds")
+        if idx + 1 < len(sys.argv):
+            max_rounds = min(int(sys.argv[idx + 1]), 3)
 
-    print(f"分析 {symbol} 中...")
-    result = run_debate(symbol)
+    print(f"分析 {symbol} 中... (辯論 {max_rounds} 輪)")
+    result = run_debate(symbol, max_rounds=max_rounds)
 
     if as_json:
         print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
