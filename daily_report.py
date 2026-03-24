@@ -311,6 +311,39 @@ def get_institutional_summary():
         return []
 
 
+def get_broker_summary():
+    """取得分點主力摘要（今日最新）"""
+    conn = get_conn()
+    try:
+        # 檢查 table 是否存在
+        table_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='tw_broker_trading'"
+        ).fetchone()
+        if not table_exists:
+            conn.close()
+            return []
+
+        latest = conn.execute(
+            "SELECT MAX(fetch_date) FROM tw_broker_trading"
+        ).fetchone()[0]
+        if not latest:
+            conn.close()
+            return []
+
+        # 取各股近1日 (period=1) 買超第一名
+        rows = conn.execute("""
+            SELECT stock_id, broker_name, net_qty, pct
+            FROM tw_broker_trading
+            WHERE fetch_date = ? AND period = 1 AND side = 'buy' AND rank = 1
+            ORDER BY ABS(net_qty) DESC LIMIT 6
+        """, (latest,)).fetchall()
+        conn.close()
+        return [dict(r) | {'date': latest} for r in rows]
+    except Exception:
+        conn.close()
+        return []
+
+
 def get_best_strategies():
     """取得各市場最佳策略"""
     conn = get_conn()
@@ -433,6 +466,14 @@ def generate_report():
             fn = f"外{r['foreign_net']:+,}" if r['foreign_net'] else ""
             tn = f"投{r['trust_net']:+,}" if r['trust_net'] else ""
             report.append(f"{arrow} {r['symbol']}: {net:+,} ({fn} {tn})")
+
+    # 分點主力
+    broker = get_broker_summary()
+    if broker:
+        report.append(f"\n🔍 分點主力 ({broker[0]['date']})")
+        report.append("─" * 35)
+        for b in broker:
+            report.append(f"• {b['stock_id']}: {b['broker_name']} 淨買超 {b['net_qty']:+,} ({b['pct']})")
 
     # 最佳策略
     strategies = get_best_strategies()

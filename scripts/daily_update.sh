@@ -134,6 +134,17 @@ else
 fi
 
 if [ "$IS_WEEKEND" = false ]; then
+    # 3.8 分點主力抓取（重點股票近1日）
+    TOTAL_STEPS=$((TOTAL_STEPS + 1))
+    log "Fetching broker trading data..."
+    $VENV broker_trading.py 2330 2317 2454 2382 2881 2891 1301 2303 2002 3034 3008 3443 6669 2308 3231 5274 >> "$LOG" 2>&1
+    if [ $? -eq 0 ]; then
+        OK_STEPS=$((OK_STEPS + 1))
+    else
+        log "ERROR: Broker trading data fetch failed"
+        tg_notify "⚠️ 投資系統: 分點主力抓取失敗"
+    fi
+
     # 4. 自動分析 Top 10 異動股
     TOTAL_STEPS=$((TOTAL_STEPS + 1))
     log "Running auto analysis..."
