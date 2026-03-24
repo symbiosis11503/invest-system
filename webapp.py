@@ -1912,6 +1912,39 @@ def api_broker_trading():
     return jsonify(result)
 
 
+@app.route("/api/broker-summary")
+def api_broker_summary():
+    """分點主力摘要 — 所有股票近1日買超冠軍
+    GET /api/broker-summary?limit=8
+    """
+    limit = request.args.get('limit', 8, type=int)
+    conn = get_conn()
+    try:
+        table_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='tw_broker_trading'"
+        ).fetchone()
+        if not table_exists:
+            return jsonify([])
+        latest = conn.execute("SELECT MAX(fetch_date) FROM tw_broker_trading").fetchone()[0]
+        if not latest:
+            return jsonify([])
+        rows = conn.execute("""
+            SELECT b.stock_id, b.broker_name, b.net_qty, b.pct, s.name_zh
+            FROM tw_broker_trading b
+            LEFT JOIN symbol_names s ON b.stock_id = s.symbol
+            WHERE b.fetch_date = ? AND b.period = 1 AND b.side = 'buy' AND b.rank = 1
+            ORDER BY ABS(b.net_qty) DESC LIMIT ?
+        """, (latest, limit)).fetchall()
+        conn.close()
+        return jsonify([{
+            "stock_id": r[0], "stock_name": r[4] or r[0],
+            "broker_name": r[1], "net_qty": r[2], "pct": r[3], "date": latest
+        } for r in rows])
+    except Exception:
+        conn.close()
+        return jsonify([])
+
+
 @app.route("/api/margin/<symbol>")
 def api_margin(symbol):
     """融資融券趨勢 — 近 N 日"""

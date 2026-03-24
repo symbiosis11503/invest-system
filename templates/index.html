@@ -73,7 +73,7 @@
 
 @media (max-width: 900px) {
   .dashboard-grid { grid-template-columns: 1fr; }
-  .market-overview, .market-sentiment, .institutional-flow, .top-strategies, .latest-news, .gift-deadline, .eco-events { grid-column: span 1; }
+  .market-overview, .market-sentiment, .institutional-flow, .top-strategies, .latest-news, .gift-deadline, .eco-events, .screener-quick, .eps-leaders, .broker-quick { grid-column: span 1; }
 }
 
 /* Gift deadline item */
@@ -380,17 +380,16 @@ async function loadDashboard() {
     }
   } catch { document.getElementById('eco-list').innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">載入失敗</div>'; }
 
-  // Broker Quick
+  // Broker Quick — 多股買超冠軍
   try {
     const brokerList = document.getElementById('broker-list');
-    const bRes = await fetch('/api/broker-trading?stock_id=2330&period=1');
+    const bRes = await fetch('/api/broker-summary?limit=6');
     if (bRes.ok) {
       const bData = await bRes.json();
-      const topBuy = (bData.buy_list || []).slice(0, 5);
-      if (topBuy.length) {
-        brokerList.innerHTML = topBuy.map(b =>
+      if (bData.length) {
+        brokerList.innerHTML = bData.map(b =>
           `<div class="broker-item">
-            <span class="stock">${escapeHtml(bData.stock_id||'2330')}</span>
+            <span class="stock"><a href="/broker-trading/${b.stock_id}" style="color:inherit;text-decoration:none">${escapeHtml(b.stock_id)}</a></span>
             <span class="broker">${escapeHtml(b.broker_name)}</span>
             <span class="net" style="color:${b.net_qty>0?'var(--red)':'var(--green)'}">${b.net_qty>0?'+':''}${b.net_qty.toLocaleString()}</span>
           </div>`
