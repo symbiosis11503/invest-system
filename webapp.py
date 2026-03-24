@@ -1976,6 +1976,74 @@ def api_trading_day():
     })
 
 
+@app.route("/api/ex-dividend")
+def api_ex_dividend():
+    """除權除息預告"""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT date, symbol, name, ex_type, stock_dividend_ratio, cash_dividend
+        FROM tw_ex_dividend ORDER BY date DESC
+    """).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/sbl/<symbol>")
+def api_sbl(symbol):
+    """個股借券賣出可用量（放空指標）"""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT date, symbol, available_volume, market
+        FROM tw_sbl WHERE symbol = ? ORDER BY date DESC LIMIT 30
+    """, (symbol,)).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/sbl-top")
+def api_sbl_top():
+    """借券賣出量 Top 20（最新日期）"""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT s.date, s.symbol, s.available_volume, s.market,
+               COALESCE(n.name, s.symbol) as name
+        FROM tw_sbl s
+        LEFT JOIN tw_stock_day_avg n ON s.symbol = n.symbol
+            AND n.date = (SELECT MAX(date) FROM tw_stock_day_avg)
+        WHERE s.date = (SELECT MAX(date) FROM tw_sbl)
+          AND s.market = 'TWSE'
+        ORDER BY s.available_volume DESC LIMIT 20
+    """).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/qfiis-cat")
+def api_qfiis_cat():
+    """外資持股類股比率"""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT date, industry, stock_count, total_shares, foreign_shares, percentage
+        FROM tw_qfiis_cat WHERE date = (SELECT MAX(date) FROM tw_qfiis_cat)
+        ORDER BY percentage DESC
+    """).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
+@app.route("/api/yearly-trade/<symbol>")
+def api_yearly_trade(symbol):
+    """個股年度成交資訊（高低點/均價）"""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT year, symbol, name, trade_volume, trade_value, transactions,
+               highest_price, highest_date, lowest_price, lowest_date, avg_closing_price
+        FROM tw_yearly_trade WHERE symbol = ? ORDER BY year DESC LIMIT 10
+    """, (symbol,)).fetchall()
+    conn.close()
+    return jsonify(rows_to_dicts(rows))
+
+
 if __name__ == "__main__":
     print("投資系統 Web App 啟動中...")
     print("http://localhost:18900")
