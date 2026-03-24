@@ -15,6 +15,30 @@ def get_conn():
     return conn
 
 
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tg_messages (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_id    INTEGER NOT NULL,
+            group_name  TEXT,
+            sender_id   INTEGER,
+            sender_name TEXT,
+            message_text TEXT,
+            ts          TEXT NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_tg_messages_group_ts
+        ON tg_messages (group_id, ts)
+    """)
+    conn.commit()
+    conn.close()
+
+
+init_db()
+
+
 def rows_to_dicts(rows):
     return [dict(r) for r in rows]
 
