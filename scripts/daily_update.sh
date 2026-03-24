@@ -246,6 +246,32 @@ else
     tg_notify "⚠️ 投資系統: 財經日曆更新失敗"
 fi
 
+# 8. 分點主力更新 (交易日)
+if [ "$IS_TRADING" = "true" ]; then
+    TOTAL_STEPS=$((TOTAL_STEPS + 1))
+    log "Updating broker trading data..."
+    cd "$INVEST_DIR"
+    $VENV -c "
+from broker_trading import init_broker_table, fetch_broker_trading
+import time
+init_broker_table()
+stocks = ['2330','2317','2454','2308','2412','2881','2882','2891','2886','3711',
+          '2603','2609','2615','3037','2303','6505','1301','2002','3008','2345']
+ok = 0
+for s in stocks:
+    r = fetch_broker_trading(s, period=1)
+    if r: ok += 1
+    time.sleep(0.3)
+print(f'Broker trading: {ok}/{len(stocks)} stocks fetched')
+" >> "$LOG" 2>&1
+    if [ $? -eq 0 ]; then
+        OK_STEPS=$((OK_STEPS + 1))
+    else
+        log "ERROR: Broker trading update failed"
+        tg_notify "⚠️ 投資系統: 分點主力更新失敗"
+    fi
+fi
+
 log "========== DAILY UPDATE DONE ($OK_STEPS/$TOTAL_STEPS OK) =========="
 
 # 結尾摘要通知
