@@ -47,11 +47,20 @@ def fetch_twse_daily(date_str):
         print(f'  [TWSE] {date_str} 抓取失敗: {e}')
         return []
 
-    if data.get('stat') != 'OK' or 'data9' not in data:
+    if data.get('stat') != 'OK':
+        return []
+
+    # TWSE API 格式: data9 (舊) 或 tables[8].data (新, 2026+)
+    rows = data.get('data9')
+    if rows is None:
+        tables = data.get('tables', [])
+        if len(tables) > 8 and tables[8].get('data'):
+            rows = tables[8]['data']
+    if not rows:
         return []
 
     results = []
-    for row in data['data9']:
+    for row in rows:
         try:
             symbol = row[0].strip()  # 證券代號
             name = row[1].strip()    # 證券名稱

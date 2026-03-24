@@ -45,7 +45,8 @@ import datetime
 today = datetime.date.today().strftime('%Y%m%d')
 data = fetch_twse_daily(today)
 if data:
-    print(f'TWSE daily: {len(data)} rows')
+    saved = save_to_db(data, source='twse')
+    print(f'TWSE daily: {len(data)} rows fetched, {saved} saved')
 else:
     print('No TWSE data (market closed?)')
 " >> "$LOG" 2>&1
