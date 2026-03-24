@@ -1811,6 +1811,51 @@ def api_debate(symbol):
         return jsonify({'error': str(e)}), 500
 
 
+# ── 財經日曆 ─────────────────────────────────────────────
+
+@app.route("/economic-calendar")
+def economic_calendar_page():
+    """財經日曆頁面"""
+    return render_template("economic_calendar.html")
+
+
+@app.route("/api/economic-calendar")
+def api_economic_calendar():
+    """財經日曆 API — 列出事件"""
+    from economic_calendar import get_events, init_calendar_table
+    init_calendar_table()
+    date_from = request.args.get('from')
+    date_to = request.args.get('to')
+    country = request.args.get('country')
+    importance = request.args.get('importance')
+    limit = request.args.get('limit', 200, type=int)
+
+    if not date_from:
+        date_from = datetime.now().strftime("%Y-%m-%d")
+    if not date_to:
+        date_to = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+
+    return jsonify(get_events(date_from=date_from, date_to=date_to,
+                              country=country, importance=importance, limit=limit))
+
+
+@app.route("/api/economic-calendar/today")
+def api_economic_calendar_today():
+    """今日財經事件"""
+    from economic_calendar import get_today_events, init_calendar_table
+    init_calendar_table()
+    return jsonify(get_today_events())
+
+
+@app.route("/api/economic-calendar/refresh", methods=["POST"])
+def api_economic_calendar_refresh():
+    """手動觸發抓取財經日曆"""
+    from economic_calendar import fetch_and_store
+    days = request.args.get('days', 7, type=int)
+    result = fetch_and_store(days=min(days, 30))
+    return jsonify(result)
+
+
 # ── 股東紀念品 ─────────────────────────────────────────
 
 @app.route("/shareholder-gifts")

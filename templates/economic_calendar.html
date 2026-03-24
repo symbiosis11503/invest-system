@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>財經日曆 — Symbiosis Invest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/invest-base.css">
+<style>
+/* ── Filter Bar ── */
+.filter-bar {
+  display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;
+}
+.filter-chip {
+  padding: 6px 14px; border-radius: var(--radius-badge); font-size: 0.78em;
+  cursor: pointer; border: 1px solid var(--border-color); background: transparent;
+  color: var(--text-secondary); transition: var(--transition); user-select: none;
+}
+.filter-chip:hover { border-color: var(--border-hover); }
+.filter-chip.active { background: rgba(99,102,241,0.1); border-color: var(--accent-indigo); color: var(--accent-indigo); }
+.filter-sep { width: 1px; height: 24px; background: var(--border-color); margin: 0 4px; }
+.imp-high { border-color: rgba(239,68,68,0.3); }
+.imp-high.active { background: rgba(239,68,68,0.12); border-color: #ef4444; color: #ef4444; }
+.imp-medium { border-color: rgba(245,158,11,0.3); }
+.imp-medium.active { background: rgba(245,158,11,0.12); border-color: #f59e0b; color: #f59e0b; }
+
+/* ── Stats Row ── */
+.stats-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.stat-chip {
+  padding: 8px 16px; border-radius: var(--radius-btn);
+  background: var(--card-bg); border: 1px solid var(--border-color);
+  font-size: 0.78em; display: flex; align-items: center; gap: 8px;
+}
+.stat-chip .num { font-family: var(--font-mono); font-weight: 700; font-size: 1.2em; }
+.stat-chip .label { color: var(--text-tertiary); }
+
+/* ── Timeline ── */
+.day-group { margin-bottom: 28px; }
+.day-header {
+  position: sticky; top: var(--header-h); z-index: 10;
+  padding: 10px 0; margin-bottom: 8px;
+  font-size: 0.85em; font-weight: 600;
+  background: var(--background);
+  border-bottom: 1px solid var(--border-color);
+  display: flex; align-items: center; gap: 10px;
+}
+.day-header .date { color: var(--accent-cyan); font-family: var(--font-mono); }
+.day-header .weekday { color: var(--text-tertiary); font-size: 0.9em; }
+.day-header .count {
+  margin-left: auto; font-size: 0.85em; color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+.today-badge {
+  padding: 2px 8px; border-radius: var(--radius-badge);
+  background: rgba(99,102,241,0.15); color: var(--accent-indigo);
+  font-size: 0.8em; font-weight: 600;
+}
+
+/* ── Event Row ── */
+.event-row {
+  display: grid;
+  grid-template-columns: 60px 40px 1fr 70px 80px 80px 80px;
+  gap: 8px; align-items: center;
+  padding: 10px 12px; margin-bottom: 2px;
+  border-radius: var(--radius-btn);
+  transition: var(--transition);
+  font-size: 0.82em;
+}
+.event-row:hover { background: rgba(255,255,255,0.03); }
+.event-row.importance-high {
+  border-left: 3px solid #ef4444;
+  background: rgba(239,68,68,0.04);
+}
+.event-row.importance-medium {
+  border-left: 3px solid #f59e0b;
+  background: rgba(245,158,11,0.02);
+}
+.event-row.importance-low {
+  border-left: 3px solid transparent;
+}
+
+.ev-time { font-family: var(--font-mono); color: var(--text-secondary); font-size: 0.95em; }
+.ev-flag { font-size: 1.2em; text-align: center; }
+.ev-name { font-weight: 500; }
+.ev-importance {
+  text-align: center;
+}
+.ev-importance .dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  margin: 0 1px;
+}
+.dot-high { background: #ef4444; }
+.dot-medium { background: #f59e0b; }
+.dot-low { background: var(--text-tertiary); }
+
+.ev-val { font-family: var(--font-mono); font-size: 0.9em; text-align: right; color: var(--text-secondary); }
+.ev-val.actual { font-weight: 600; color: var(--text-primary); }
+.ev-val.beat { color: var(--price-up); }
+.ev-val.miss { color: var(--price-down); }
+
+/* ── Status ── */
+.status-bar {
+  padding: 10px 16px; margin-bottom: 16px;
+  border-radius: var(--radius-btn); font-size: 0.78em;
+  background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.15);
+  color: var(--text-secondary); display: flex; align-items: center; gap: 8px;
+}
+.status-bar .refresh-btn {
+  margin-left: auto; padding: 4px 12px; border-radius: var(--radius-badge);
+  background: var(--accent-indigo); color: #fff; border: none;
+  font-size: 0.9em; cursor: pointer; font-family: var(--font-sans);
+}
+.status-bar .refresh-btn:hover { opacity: 0.8; }
+.status-bar .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Empty State ── */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--text-tertiary);
+}
+.empty-state .icon { font-size: 3em; margin-bottom: 12px; }
+.empty-state .msg { font-size: 0.9em; }
+
+/* ── Column Header ── */
+.col-header {
+  display: grid;
+  grid-template-columns: 60px 40px 1fr 70px 80px 80px 80px;
+  gap: 8px; padding: 8px 12px; margin-bottom: 4px;
+  font-size: 0.68em; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-tertiary);
+}
+.col-header span:nth-child(n+5) { text-align: right; }
+.col-header span:nth-child(4) { text-align: center; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .event-row {
+    grid-template-columns: 50px 32px 1fr 50px;
+    font-size: 0.78em;
+  }
+  .ev-prev, .ev-fore, .ev-act, .col-header span:nth-child(n+5) { display: none; }
+  .col-header { grid-template-columns: 50px 32px 1fr 50px; }
+}
+@media (max-width: 600px) {
+  .filter-bar { gap: 6px; }
+  .filter-chip { padding: 5px 10px; font-size: 0.72em; }
+  .stats-row { gap: 8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="main-header">
+  <div class="logo">Symbiosis Invest</div>
+  <nav class="main-nav">
+    <a href="/" class="nav-link">儀表板</a>
+    <a href="/trading" class="nav-link">策略監控</a>
+    <a href="/intelligence" class="nav-link">市場情報</a>
+    <a href="/backtests" class="nav-link">回測結果</a>
+    <a href="/messages" class="nav-link">群組監聽</a>
+    <a href="/chipdata" class="nav-link">籌碼分析</a>
+    <a href="/screener" class="nav-link">智慧篩選</a>
+    <a href="/economic-calendar" class="nav-link active">財經日曆</a>
+    <a href="/debate" class="nav-link">AI 辯論</a>
+    <a href="/shareholder-gifts" class="nav-link">紀念品</a>
+  </nav>
+</header>
+
+<!-- Content -->
+<div class="page-content">
+
+  <!-- Status Bar -->
+  <div class="status-bar" id="status-bar">
+    <span id="status-text">載入中...</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="refreshData()">更新資料</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" id="stats-row"></div>
+
+  <!-- Filters -->
+  <div class="filter-bar" id="filter-bar">
+    <span style="font-size:0.72em;color:var(--text-tertiary);margin-right:4px">國家</span>
+    <button class="filter-chip active" data-filter="country" data-value="all">全部</button>
+    <button class="filter-chip" data-filter="country" data-value="US">🇺🇸 美國</button>
+    <button class="filter-chip" data-filter="country" data-value="CN">🇨🇳 中國</button>
+    <button class="filter-chip" data-filter="country" data-value="TW">🇹🇼 台灣</button>
+    <button class="filter-chip" data-filter="country" data-value="EU">🇪🇺 歐洲</button>
+    <button class="filter-chip" data-filter="country" data-value="JP">🇯🇵 日本</button>
+    <button class="filter-chip" data-filter="country" data-value="GB">🇬🇧 英國</button>
+    <div class="filter-sep"></div>
+    <span style="font-size:0.72em;color:var(--text-tertiary);margin-right:4px">重要性</span>
+    <button class="filter-chip imp-high active" data-filter="importance" data-value="all">全部</button>
+    <button class="filter-chip imp-high" data-filter="importance" data-value="high">高</button>
+    <button class="filter-chip imp-medium" data-filter="importance" data-value="medium">中</button>
+  </div>
+
+  <!-- Column Header -->
+  <div class="col-header">
+    <span>時間</span>
+    <span></span>
+    <span>事件</span>
+    <span>重要性</span>
+    <span>前值</span>
+    <span>預測</span>
+    <span>實際</span>
+  </div>
+
+  <!-- Timeline Container -->
+  <div id="timeline"></div>
+
+</div>
+
+<!-- Mobile Tab Bar -->
+<nav class="mobile-tab-bar">
+  <div class="tab-items">
+    <a href="/" class="tab-item"><span class="tab-icon">📊</span>儀表板</a>
+    <a href="/trading" class="tab-item"><span class="tab-icon">📈</span>監控</a>
+    <a href="/intelligence" class="tab-item"><span class="tab-icon">📰</span>情報</a>
+    <a href="/economic-calendar" class="tab-item active"><span class="tab-icon">📅</span>日曆</a>
+    <a href="/chipdata" class="tab-item"><span class="tab-icon">🏦</span>籌碼</a>
+  </div>
+</nav>
+
+<script>
+const WEEKDAYS = ['日','一','二','三','四','五','六'];
+let allEvents = [];
+let activeCountry = 'all';
+let activeImportance = 'all';
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function importanceDots(level) {
+  const n = level === 'high' ? 3 : level === 'medium' ? 2 : 1;
+  const cls = 'dot-' + level;
+  return Array(n).fill(`<span class="dot ${cls}"></span>`).join('');
+}
+
+function renderTimeline(events) {
+  const container = document.getElementById('timeline');
+  if (!events.length) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="icon">📅</div>
+      <div class="msg">目前沒有符合條件的事件<br>請嘗試調整篩選條件或更新資料</div>
+    </div>`;
+    return;
+  }
+
+  // Group by date
+  const groups = {};
+  events.forEach(ev => {
+    const d = ev.event_date;
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(ev);
+  });
+
+  const today = new Date().toISOString().slice(0, 10);
+  let html = '';
+
+  for (const [date, evts] of Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]))) {
+    const dt = new Date(date + 'T00:00:00');
+    const wd = WEEKDAYS[dt.getDay()];
+    const isToday = date === today;
+    const highCount = evts.filter(e => e.importance === 'high').length;
+
+    html += `<div class="day-group">`;
+    html += `<div class="day-header">
+      <span class="date">${date}</span>
+      <span class="weekday">週${wd}</span>
+      ${isToday ? '<span class="today-badge">TODAY</span>' : ''}
+      ${highCount ? `<span style="color:#ef4444;font-size:0.85em">${highCount} 高重要性</span>` : ''}
+      <span class="count">${evts.length} 事件</span>
+    </div>`;
+
+    evts.forEach(ev => {
+      const impClass = 'importance-' + ev.importance;
+      const flag = ev.country_flag || '';
+
+      // Determine if actual beat/miss forecast
+      let actualClass = 'actual';
+      if (ev.actual && ev.forecast) {
+        const a = parseFloat(ev.actual);
+        const f = parseFloat(ev.forecast);
+        if (!isNaN(a) && !isNaN(f)) {
+          actualClass += a > f ? ' beat' : a < f ? ' miss' : '';
+        }
+      }
+
+      html += `<div class="event-row ${impClass}">
+        <span class="ev-time">${escapeHtml(ev.event_time) || '--:--'}</span>
+        <span class="ev-flag">${flag}</span>
+        <span class="ev-name">${escapeHtml(ev.event_name)}</span>
+        <span class="ev-importance">${importanceDots(ev.importance)}</span>
+        <span class="ev-val ev-prev">${escapeHtml(ev.previous) || '-'}</span>
+        <span class="ev-val ev-fore">${escapeHtml(ev.forecast) || '-'}</span>
+        <span class="ev-val ${actualClass} ev-act">${escapeHtml(ev.actual) || '-'}</span>
+      </div>`;
+    });
+
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function updateStats(events) {
+  const total = events.length;
+  const high = events.filter(e => e.importance === 'high').length;
+  const medium = events.filter(e => e.importance === 'medium').length;
+  const countries = new Set(events.map(e => e.country).filter(Boolean));
+  const dates = new Set(events.map(e => e.event_date));
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-chip"><span class="num">${total}</span><span class="label">事件總數</span></div>
+    <div class="stat-chip"><span class="num" style="color:#ef4444">${high}</span><span class="label">高重要性</span></div>
+    <div class="stat-chip"><span class="num" style="color:#f59e0b">${medium}</span><span class="label">中重要性</span></div>
+    <div class="stat-chip"><span class="num">${countries.size}</span><span class="label">國家</span></div>
+    <div class="stat-chip"><span class="num">${dates.size}</span><span class="label">天</span></div>
+  `;
+}
+
+function applyFilters() {
+  let filtered = allEvents;
+  if (activeCountry !== 'all') {
+    filtered = filtered.filter(e => e.country === activeCountry);
+  }
+  if (activeImportance !== 'all') {
+    filtered = filtered.filter(e => e.importance === activeImportance);
+  }
+  updateStats(filtered);
+  renderTimeline(filtered);
+}
+
+// Filter click handlers
+document.querySelectorAll('.filter-chip[data-filter="country"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip[data-filter="country"]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeCountry = btn.dataset.value;
+    applyFilters();
+  });
+});
+
+document.querySelectorAll('.filter-chip[data-filter="importance"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip[data-filter="importance"]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeImportance = btn.dataset.value;
+    applyFilters();
+  });
+});
+
+async function loadEvents() {
+  const statusText = document.getElementById('status-text');
+  try {
+    const resp = await fetch('/api/economic-calendar');
+    allEvents = await resp.json();
+    if (allEvents.length) {
+      const sources = [...new Set(allEvents.map(e => e.source).filter(Boolean))];
+      const lastUpdate = allEvents[0].updated_at || '';
+      statusText.textContent = `共 ${allEvents.length} 筆事件 | 來源: ${sources.join(', ') || '-'} | 更新: ${lastUpdate.slice(0, 16)}`;
+    } else {
+      statusText.textContent = '尚無資料，請點擊「更新資料」抓取';
+    }
+    applyFilters();
+  } catch (e) {
+    statusText.textContent = '載入失敗: ' + e.message;
+    document.getElementById('timeline').innerHTML = `<div class="empty-state">
+      <div class="icon">⚠️</div>
+      <div class="msg">載入失敗，請稍後重試</div>
+    </div>`;
+  }
+}
+
+async function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  const statusText = document.getElementById('status-text');
+  btn.disabled = true;
+  btn.textContent = '更新中...';
+  statusText.textContent = '正在從資料來源抓取...';
+
+  try {
+    const resp = await fetch('/api/economic-calendar/refresh', { method: 'POST' });
+    const result = await resp.json();
+    statusText.textContent = `更新完成: 抓取 ${result.fetched} 筆, 儲存 ${result.stored} 筆 | 來源: ${(result.sources||[]).join(', ')}`;
+    await loadEvents();
+  } catch (e) {
+    statusText.textContent = '更新失敗: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '更新資料';
+  }
+}
+
+loadEvents();
+</script>
+</body>
+</html>
