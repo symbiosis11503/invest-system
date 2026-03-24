@@ -48,18 +48,24 @@ def get_top_movers(limit=5):
 
 
 def send_to_tg(text, chat_id=None):
-    """推播到 TG"""
+    """推播到 TG（Markdown 失敗自動退回純文字）"""
     bot_token = os.environ.get('TG_BOT_TOKEN', '8585052129:AAGqJyRNJGxL7bUPr1VuRGtbB2eSFIBCcEM')
     chat_id = chat_id or os.environ.get('TG_CHAT_ID', '6927318445')
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     try:
-        # TG 訊息長度限制 4096，超過就分段
         chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
         for chunk in chunks:
-            requests.post(
-                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            resp = requests.post(
+                url,
                 json={"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"},
                 timeout=10,
             )
+            if not resp.ok and "can't parse entities" in resp.text.lower():
+                requests.post(
+                    url,
+                    json={"chat_id": chat_id, "text": chunk},
+                    timeout=10,
+                )
     except Exception as e:
         print(f"TG 推播失敗: {e}")
 
