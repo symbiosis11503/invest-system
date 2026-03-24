@@ -180,7 +180,7 @@ function isActive(path: string) {
 
 /* ── Sidebar ── */
 .sidebar {
-  width: 230px;
+  width: 280px;
   background: var(--surface3);
   border-right: 1px solid var(--border);
   display: flex;
@@ -191,7 +191,7 @@ function isActive(path: string) {
   height: 100vh;
   overflow-y: auto;
   z-index: 200;
-  box-shadow: inset -1px 0 0 var(--border), 4px 0 20px rgba(0,0,0,0.4);
+  box-shadow: inset -1px 0 0 var(--border), 4px 0 24px rgba(0,0,0,0.5);
 }
 
 .sidebar-header {
@@ -231,16 +231,16 @@ function isActive(path: string) {
 
 .brand-name {
   font-family: 'Orbitron', monospace;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--cyan);
   letter-spacing: 0.1em;
-  text-shadow: 0 0 12px rgba(0,212,255,0.6);
+  text-shadow: 0 0 16px rgba(0,212,255,0.7), 0 0 32px rgba(0,212,255,0.3);
 }
 
 .brand-sub {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted);
   letter-spacing: 0.06em;
 }
@@ -262,11 +262,11 @@ function isActive(path: string) {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  padding: 7px 14px;
   background: rgba(0,255,136,0.04);
   border-bottom: 1px solid var(--border2);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.08em;
 }
 
@@ -292,8 +292,8 @@ function isActive(path: string) {
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 10px 8px;
+  gap: 2px;
+  padding: 12px 8px;
   flex: 1;
 }
 
@@ -301,10 +301,10 @@ function isActive(path: string) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 10px 14px;
   border-radius: 2px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   transition: all 0.15s;
   cursor: pointer;
@@ -321,9 +321,10 @@ function isActive(path: string) {
 
 .nav-item.active {
   color: var(--cyan);
-  background: rgba(0,212,255,0.07);
-  border-color: rgba(0,212,255,0.2);
-  box-shadow: inset 3px 0 0 var(--cyan), 0 0 12px rgba(0,212,255,0.05);
+  background: rgba(0,212,255,0.08);
+  border-color: rgba(0,212,255,0.25);
+  box-shadow: inset 3px 0 0 var(--cyan), 0 0 16px rgba(0,212,255,0.08);
+  text-shadow: 0 0 8px rgba(0,212,255,0.4);
 }
 
 .nav-item.active .nav-code { color: var(--cyan); opacity: 1; }
@@ -331,10 +332,10 @@ function isActive(path: string) {
 
 .nav-code {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   opacity: 0.4;
-  width: 28px;
+  width: 32px;
   flex-shrink: 0;
 }
 
@@ -347,13 +348,13 @@ function isActive(path: string) {
 
 .nav-label {
   flex: 1;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .nav-arrow {
-  font-size: 7px;
+  font-size: 8px;
   color: var(--cyan);
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 /* Footer */
@@ -376,14 +377,14 @@ function isActive(path: string) {
 
 .footer-key {
   font-family: 'Orbitron', monospace;
-  font-size: 7px;
+  font-size: 9px;
   color: var(--muted);
   letter-spacing: 0.1em;
 }
 
 .footer-val {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text2);
   letter-spacing: 0.04em;
 }
@@ -400,14 +401,14 @@ function isActive(path: string) {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 20px;
-  height: 50px;
+  padding: 0 24px;
+  height: 54px;
   background: var(--surface3);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 1px 0 var(--border), 0 2px 20px rgba(0,0,0,0.4);
+  box-shadow: 0 1px 0 var(--border), 0 2px 24px rgba(0,0,0,0.5);
 }
 
 /* Top bar accent line */
@@ -447,14 +448,14 @@ function isActive(path: string) {
 
 .topbar-path {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   letter-spacing: 0.04em;
 }
 
 .page-title {
   font-family: 'Orbitron', monospace;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text2);
   letter-spacing: 0.08em;
@@ -493,7 +494,7 @@ function isActive(path: string) {
 
 .live-label {
   font-family: 'Orbitron', monospace;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--neon);
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -504,7 +505,7 @@ function isActive(path: string) {
   align-items: center;
   gap: 4px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 
@@ -515,8 +516,8 @@ function isActive(path: string) {
   background: var(--bg);
   /* Subtle grid overlay */
   background-image:
-    linear-gradient(rgba(0,212,255,0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,0.02) 1px, transparent 1px);
+    linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
@@ -525,6 +526,12 @@ function isActive(path: string) {
 }
 
 /* ── Responsive ── */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .sidebar { width: 220px; }
+  .nav-label { font-size: 12px; }
+  .content { padding: 16px; }
+}
+
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
@@ -553,8 +560,9 @@ function isActive(path: string) {
     backdrop-filter: blur(2px);
   }
   .content {
-    padding: 14px;
+    padding: 10px 12px;
   }
+  .topbar { padding: 0 14px; }
   .topbar-time { display: none; }
 }
 </style>

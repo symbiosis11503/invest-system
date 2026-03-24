@@ -201,11 +201,11 @@ onMounted(load)
 
 .page-title-code {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted);
   letter-spacing: 0.08em;
   background: var(--border);
-  padding: 1px 6px;
+  padding: 2px 7px;
   display: inline-block;
   margin-bottom: 4px;
 }
@@ -251,7 +251,7 @@ onMounted(load)
 
 .group-title {
   font-family: 'Orbitron', monospace;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--cyan);
   letter-spacing: 0.12em;
@@ -272,7 +272,7 @@ onMounted(load)
 .field-meta { display: flex; flex-direction: column; gap: 3px; }
 
 .field-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text2);
   cursor: default;
@@ -280,7 +280,7 @@ onMounted(load)
 
 .field-hint {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   letter-spacing: 0.02em;
 }
@@ -310,9 +310,9 @@ onMounted(load)
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 8px 10px;
+  padding: 9px 12px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text);
   transition: border-color 0.2s;
   min-width: 0;
@@ -322,7 +322,7 @@ onMounted(load)
   border-color: var(--cyan);
   background: var(--surface3);
 }
-.field-input::placeholder { color: var(--muted); font-family: inherit; font-size: 11px; }
+.field-input::placeholder { color: var(--muted); font-family: inherit; font-size: 12px; }
 
 .btn-toggle-show {
   background: none;
@@ -343,7 +343,7 @@ onMounted(load)
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.5;
 }

@@ -642,8 +642,8 @@ const symTrades = () => trades.value.filter(t => t.symbol === selected.value).sl
 
 .stat-pills  { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
 .stat-pill   { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-.sp-label    { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.sp-val      { font-size: 13px; font-weight: 600; }
+.sp-label    { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.sp-val      { font-size: 14px; font-weight: 600; }
 
 /* Error */
 .error-msg {
@@ -671,7 +671,7 @@ const symTrades = () => trades.value.filter(t => t.symbol === selected.value).sl
   right: 12px;
   display: flex;
   gap: 10px;
-  font-size: 11px;
+  font-size: 12px;
   z-index: 2;
   pointer-events: none;
   color: var(--text2);
@@ -728,8 +728,8 @@ const symTrades = () => trades.value.filter(t => t.symbol === selected.value).sl
   text-align: center;
 }
 
-.perf-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
-.perf-value { font-size: 22px; font-weight: 700; }
+.perf-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.perf-value { font-size: 24px; font-weight: 700; }
 
 /* Responsive */
 @media (max-width: 900px) {

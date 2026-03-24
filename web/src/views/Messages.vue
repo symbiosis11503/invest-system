@@ -143,8 +143,8 @@ function msgColor(text: string) {
 }
 
 .stat-block { display: flex; flex-direction: column; gap: 2px; }
-.sb-label   { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.sb-val     { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.sb-label   { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.sb-val     { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
 
 .group-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .group-pill {
@@ -156,8 +156,8 @@ function msgColor(text: string) {
   border-radius: 6px;
   padding: 4px 10px;
 }
-.gp-name  { font-size: 12px; color: var(--text2); }
-.gp-count { font-size: 12px; }
+.gp-name  { font-size: 13px; color: var(--text2); }
+.gp-count { font-size: 13px; }
 
 /* Filters */
 .filters-row {
@@ -173,13 +173,13 @@ function msgColor(text: string) {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 7px 14px;
+  font-size: 13px;
   color: var(--muted);
   cursor: pointer;
   transition: all 0.15s;
   font-family: inherit;
-  min-height: 34px;
+  min-height: 36px;
   white-space: nowrap;
 }
 .tab-btn:hover  { color: var(--text); }
@@ -223,11 +223,11 @@ function msgColor(text: string) {
   flex-wrap: wrap;
 }
 
-.mi-sender { font-size: 12px; font-weight: 500; }
-.mi-time   { font-size: 11px; margin-left: auto; }
+.mi-sender { font-size: 13px; font-weight: 500; }
+.mi-time   { font-size: 12px; margin-left: auto; }
 
 .mi-text {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text2);
   line-height: 1.6;
   white-space: pre-wrap;

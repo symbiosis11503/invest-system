@@ -78,6 +78,10 @@ function parseKeywords(kw: string): string[] {
     return (kw || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 5)
   }
 }
+
+function stripHtml(html: string): string {
+  return (html || '').replace(/<[^>]*>/g, '').replace(/&[a-z]+;/gi, ' ').trim()
+}
 </script>
 
 <template>
@@ -162,8 +166,8 @@ function parseKeywords(kw: string): string[] {
             {{ item.score }}/10
           </span>
         </div>
-        <div class="nc-title">{{ item.title }}</div>
-        <div class="nc-summary">{{ item.summary }}</div>
+        <div class="nc-title">{{ stripHtml(item.title) }}</div>
+        <div class="nc-summary" v-if="stripHtml(item.summary)">{{ stripHtml(item.summary) }}</div>
         <div class="nc-reason" v-if="item.reason">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -184,51 +188,73 @@ function parseKeywords(kw: string): string[] {
 </template>
 
 <style scoped>
-.intel-page { display: flex; flex-direction: column; gap: 16px; }
+.intel-page { display: flex; flex-direction: column; gap: 12px; }
 
 /* Mood card */
 .mood-card {
   display: flex;
-  gap: 32px;
+  gap: 24px;
   align-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px 24px;
+  border-radius: 2px;
+  padding: 14px 18px;
   flex-wrap: wrap;
+  position: relative;
+}
+.mood-card::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px;
+  width: 12px; height: 12px;
+  border-top: 2px solid var(--cyan);
+  border-left: 2px solid var(--cyan);
+}
+.mood-card::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; right: -1px;
+  width: 12px; height: 12px;
+  border-bottom: 2px solid var(--cyan);
+  border-right: 2px solid var(--cyan);
 }
 
-.mood-main { min-width: 140px; }
-.mood-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
-.mood-value { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
-.mood-score { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.mood-main { min-width: 120px; }
+.mood-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;
+}
+.mood-value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+.mood-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: var(--muted); margin-top: 4px;
+}
 
-.mood-bars { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 200px; }
+.mood-bars { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 180px; }
 
 .mb-item { display: flex; align-items: center; gap: 8px; }
-.mb-label { font-size: 12px; font-weight: 600; min-width: 32px; }
+.mb-label { font-size: 12px; font-weight: 600; min-width: 30px; }
 .mb-bar {
-  flex: 1;
-  height: 6px;
+  flex: 1; height: 4px;
   background: var(--border2);
-  border-radius: 3px;
+  border-radius: 2px;
   overflow: hidden;
 }
 .mb-fill {
-  height: 100%;
-  border-radius: 3px;
+  height: 100%; border-radius: 2px;
   transition: width 0.5s ease;
 }
 .mb-fill.up      { background: var(--up); }
 .mb-fill.down    { background: var(--down); }
 .mb-fill.neutral { background: var(--muted); }
-.mb-val { font-size: 12px; min-width: 24px; text-align: right; color: var(--text2); }
-
-/* Filters */
-/* Action bar */
-.action-bar {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+.mb-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; min-width: 24px; text-align: right; color: var(--text2);
 }
+
+/* Action bar */
+.action-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .btn-collect {
   background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.3);
   color: var(--neon); font-family: 'Orbitron', monospace; font-size: 11px;
@@ -238,61 +264,65 @@ function parseKeywords(kw: string): string[] {
 }
 .btn-collect:hover:not(:disabled) { background: rgba(0,255,136,0.15); }
 .btn-collect:disabled { opacity: 0.5; cursor: not-allowed; }
-.link-tasks { font-size: 12px; color: var(--cyan); text-decoration: none; }
+.link-tasks { font-size: 13px; color: var(--cyan); }
 .link-tasks:hover { color: var(--neon); }
 .run-msg { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
 
-.filter-tabs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-
+/* Filter tabs */
+.filter-tabs { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
 .tab-btn {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 14px;
+  border-radius: 2px;
+  padding: 5px 13px;
   font-size: 13px;
   color: var(--muted);
   cursor: pointer;
   transition: all 0.15s;
   font-family: inherit;
-  min-height: 36px;
+  min-height: 32px;
 }
 .tab-btn:hover  { color: var(--text); border-color: var(--muted); }
 .tab-btn.active { color: var(--gold); border-color: var(--gold); background: var(--gold-soft); }
-
-.filter-count { font-size: 12px; margin-left: 6px; }
+.filter-count { font-size: 12px; margin-left: 4px; font-family: 'JetBrains Mono', monospace; }
 
 /* News grid */
 .news-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 12px;
 }
 
 .news-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 2px;
+  padding: 13px 15px;
   cursor: pointer;
-  transition: border-color 0.2s, transform 0.15s;
+  transition: border-color 0.2s;
   color: var(--text);
   text-decoration: none;
+  position: relative;
 }
-.news-card:hover {
-  border-color: var(--gold);
-  transform: translateY(-1px);
+.news-card::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; right: -1px;
+  width: 8px; height: 8px;
+  border-bottom: 1px solid var(--gold);
+  border-right: 1px solid var(--gold);
+  opacity: 0;
+  transition: opacity 0.2s;
 }
+.news-card:hover { border-color: rgba(255,184,0,0.4); }
+.news-card:hover::after { opacity: 1; }
 
-.nc-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.nc-source { font-size: 11px; flex: 1; }
-.nc-score  { font-size: 12px; font-weight: 600; }
+.nc-header { display: flex; align-items: center; gap: 8px; }
+.nc-source { font-size: 11px; flex: 1; font-family: 'JetBrains Mono', monospace; }
+.nc-score  { font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
 .nc-title {
   font-size: 14px;
@@ -310,7 +340,7 @@ function parseKeywords(kw: string): string[] {
   color: var(--text2);
   line-height: 1.5;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -323,16 +353,30 @@ function parseKeywords(kw: string): string[] {
   color: var(--muted);
   line-height: 1.5;
   background: var(--surface2);
-  border-radius: 6px;
-  padding: 6px 8px;
+  border-left: 2px solid var(--border);
+  padding: 5px 8px;
 }
 
 .nc-keywords { display: flex; gap: 4px; flex-wrap: wrap; }
 
-.nc-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.nc-time {
+  font-size: 11px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
 
-@media (max-width: 640px) {
-  .mood-card { flex-direction: column; align-items: flex-start; gap: 16px; }
-  .news-grid { grid-template-columns: 1fr; }
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .intel-page { gap: 10px; }
+  .mood-card { flex-direction: row; padding: 12px 14px; gap: 16px; }
+  .mood-value { font-size: 24px; }
+  .news-grid { grid-template-columns: 1fr; gap: 8px; }
+  .news-card { padding: 11px 13px; }
+  .filter-tabs { gap: 4px; }
+  .tab-btn { padding: 5px 10px; font-size: 12px; }
+}
+
+@media (max-width: 480px) {
+  .mood-card { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .mood-bars { min-width: unset; width: 100%; }
 }
 </style>

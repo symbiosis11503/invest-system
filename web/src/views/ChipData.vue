@@ -142,8 +142,8 @@ function netClass(v: number) {
   flex-wrap: wrap;
 }
 
-.page-heading { font-size: 16px; font-weight: 600; color: var(--text); }
-.page-sub     { font-size: 12px; margin-top: 2px; }
+.page-heading { font-size: 17px; font-weight: 600; color: var(--text); }
+.page-sub     { font-size: 13px; margin-top: 2px; }
 
 .search-wrap { flex-shrink: 0; }
 

@@ -151,18 +151,18 @@ function fmtMoney(v: number | null | undefined) {
 </template>
 
 <style scoped>
-.backtests-page { display: flex; flex-direction: column; gap: 14px; }
+.backtests-page { display: flex; flex-direction: column; gap: 18px; }
 
 .quick-bar {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 16px;
 }
 .qb-label {
-  font-family: 'Orbitron', monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.1em;
+  font-family: 'Orbitron', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.1em;
 }
 .btn-goto-tasks {
   background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.3);
-  color: var(--neon); font-family: 'Orbitron', monospace; font-size: 10px;
-  font-weight: 600; letter-spacing: 0.08em; padding: 6px 16px;
+  color: var(--neon); font-family: 'Orbitron', monospace; font-size: 11px;
+  font-weight: 600; letter-spacing: 0.08em; padding: 7px 18px;
   text-decoration: none; transition: all 0.2s;
   clip-path: polygon(5px 0%, 100% 0%, calc(100% - 5px) 100%, 0% 100%);
 }
@@ -196,9 +196,9 @@ function fmtMoney(v: number | null | undefined) {
 }
 
 .sum-item { display: flex; align-items: baseline; gap: 6px; }
-.sum-label { font-family: 'Orbitron', monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-.sum-val   { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-.sum-unit  { font-size: 11px; color: var(--muted); }
+.sum-label { font-family: 'Orbitron', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.sum-val   { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.sum-unit  { font-size: 12px; color: var(--muted); }
 
 th.sortable {
   cursor: pointer;
@@ -206,7 +206,7 @@ th.sortable {
 }
 th.sortable:hover { color: var(--cyan); }
 
-.sym-link { color: var(--cyan); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.04em; }
+.sym-link { color: var(--cyan); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; letter-spacing: 0.04em; }
 .sym-link:hover { color: var(--neon); }
 
 @media (max-width: 768px) {

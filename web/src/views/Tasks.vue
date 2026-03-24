@@ -407,7 +407,7 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 </template>
 
 <style scoped>
-.tasks-page { display: flex; flex-direction: column; gap: 16px; }
+.tasks-page { display: flex; flex-direction: column; gap: 18px; }
 
 /* Header */
 .page-header {
@@ -415,8 +415,8 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
   justify-content: space-between; gap: 12px; flex-wrap: wrap;
 }
 .page-title-code {
-  font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--muted);
-  letter-spacing: 0.08em; background: var(--border); padding: 1px 6px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted);
+  letter-spacing: 0.08em; background: var(--border); padding: 2px 7px;
   display: inline-block; margin-bottom: 4px;
 }
 .page-title-text {
@@ -442,7 +442,7 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 .tab-btn {
   background: none; border: 1px solid transparent;
   border-bottom: none; color: var(--muted); font-family: inherit;
-  font-size: 12px; padding: 7px 16px; cursor: pointer; transition: all 0.15s;
+  font-size: 13px; padding: 8px 18px; cursor: pointer; transition: all 0.15s;
   position: relative; bottom: -1px;
 }
 .tab-btn:hover { color: var(--text); }
@@ -454,11 +454,11 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 /* Panel */
 .panel { display: flex; flex-direction: column; gap: 16px; }
 .panel-title {
-  font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 600;
+  font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 600;
   color: var(--text2); letter-spacing: 0.08em;
   border-bottom: 1px solid var(--border); padding-bottom: 10px;
 }
-.panel-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0; }
+.panel-desc { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0; }
 
 /* Forms */
 .form-grid {
@@ -467,12 +467,12 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 .form-field { display: flex; flex-direction: column; gap: 5px; }
 .form-field.full { grid-column: 1 / -1; }
 .form-field label {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
   color: var(--muted); letter-spacing: 0.04em;
 }
 .input-ctrl {
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 2px; padding: 7px 10px; font-size: 12px; font-family: inherit;
+  border-radius: 2px; padding: 8px 12px; font-size: 13px; font-family: inherit;
   color: var(--text); transition: border-color 0.2s;
 }
 .input-ctrl:focus { outline: none; border-color: var(--cyan); }
@@ -480,20 +480,20 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 
 .check-label {
   display: flex; align-items: center; gap: 8px; cursor: pointer;
-  font-family: inherit; font-size: 12px; color: var(--text2);
+  font-family: inherit; font-size: 13px; color: var(--text2);
 }
 .check-label input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; }
 
 .warning-note {
-  font-size: 11px; color: var(--gold); background: rgba(255,184,0,0.06);
-  border: 1px solid rgba(255,184,0,0.2); padding: 8px 12px; border-radius: 2px;
+  font-size: 12px; color: var(--gold); background: rgba(255,184,0,0.06);
+  border: 1px solid rgba(255,184,0,0.2); padding: 10px 14px; border-radius: 2px;
 }
 
 /* Run button */
 .btn-run {
   background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.35);
-  color: var(--neon); font-family: 'Orbitron', monospace; font-size: 11px;
-  font-weight: 600; letter-spacing: 0.1em; padding: 10px 24px;
+  color: var(--neon); font-family: 'Orbitron', monospace; font-size: 12px;
+  font-weight: 600; letter-spacing: 0.1em; padding: 11px 26px;
   cursor: pointer; transition: all 0.2s; align-self: flex-start;
   clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
 }
@@ -506,16 +506,16 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 }
 .btn-refresh {
   background: none; border: 1px solid var(--border); color: var(--muted);
-  font-size: 11px; padding: 4px 10px; cursor: pointer; border-radius: 2px;
+  font-size: 12px; padding: 5px 12px; cursor: pointer; border-radius: 2px;
   transition: all 0.15s; font-family: inherit;
 }
 .btn-refresh:hover { color: var(--cyan); border-color: var(--cyan); }
 
 .status-badge {
   display: inline-flex; align-items: center; gap: 5px;
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
   font-weight: 600; letter-spacing: 0.06em;
-  padding: 2px 8px; border-radius: 1px;
+  padding: 3px 10px; border-radius: 1px;
 }
 .status-done    { color: var(--neon); background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.25); }
 .status-error   { color: var(--down); background: rgba(255,59,91,0.08); border: 1px solid rgba(255,59,91,0.25); }
@@ -527,8 +527,8 @@ onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 }
 @keyframes spin { to { transform: rotate(360deg) } }
 
-.task-name { color: var(--text2); font-size: 12px; }
-.result-cell { max-width: 300px; font-size: 11px; word-break: break-word; }
+.task-name { color: var(--text2); font-size: 13px; }
+.result-cell { max-width: 300px; font-size: 12px; word-break: break-word; }
 
 @media (max-width: 640px) {
   .form-grid { grid-template-columns: 1fr; }

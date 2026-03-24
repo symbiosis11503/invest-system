@@ -1,0 +1,1 @@
+{"root":["./src/main.ts","./src/app.vue","./src/components/helloworld.vue","./src/views/backtests.vue","./src/views/chipdata.vue","./src/views/dashboard.vue","./src/views/intelligence.vue","./src/views/messages.vue","./src/views/settings.vue","./src/views/tasks.vue","./src/views/trading.vue"],"version":"5.9.3"}

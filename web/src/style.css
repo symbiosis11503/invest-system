@@ -46,18 +46,18 @@
   --purple:    #9D4EDD;
 
   /* Glow intensities */
-  --glow-cyan:    0 0 8px rgba(0,212,255,0.6), 0 0 20px rgba(0,212,255,0.2);
-  --glow-neon:    0 0 8px rgba(0,255,136,0.6), 0 0 20px rgba(0,255,136,0.2);
-  --glow-up:      0 0 8px rgba(255,59,91,0.5);
-  --glow-gold:    0 0 8px rgba(255,184,0,0.5);
+  --glow-cyan:    0 0 10px rgba(0,212,255,0.7), 0 0 24px rgba(0,212,255,0.25);
+  --glow-neon:    0 0 10px rgba(0,255,136,0.7), 0 0 24px rgba(0,255,136,0.25);
+  --glow-up:      0 0 10px rgba(255,59,91,0.6);
+  --glow-gold:    0 0 10px rgba(255,184,0,0.6);
 }
 
 html, body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -84,7 +84,7 @@ a { color: var(--cyan); text-decoration: none; }
 a:hover { color: var(--neon); }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--cyan-dim); }
@@ -121,7 +121,7 @@ a:hover { color: var(--neon); }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 20px;
+  padding: 16px 18px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   position: relative;
@@ -133,8 +133,8 @@ a:hover { color: var(--neon); }
 .card::after {
   content: '';
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   pointer-events: none;
   transition: border-color 0.25s;
 }
@@ -151,17 +151,17 @@ a:hover { color: var(--neon); }
 
 .card:hover {
   border-color: var(--border-glow);
-  box-shadow: 0 0 0 1px rgba(0,212,255,0.08), inset 0 0 30px rgba(0,212,255,0.03);
+  box-shadow: 0 0 0 1px rgba(0,212,255,0.12), 0 4px 24px rgba(0,0,0,0.5), inset 0 0 40px rgba(0,212,255,0.04);
 }
 
 .card-title {
   font-family: 'Orbitron', monospace;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--cyan-dim);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -177,7 +177,7 @@ a:hover { color: var(--neon); }
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -188,7 +188,7 @@ th {
   color: var(--muted);
   font-weight: 500;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-family: 'Orbitron', monospace;
@@ -199,21 +199,21 @@ td {
   border-bottom: 1px solid var(--border2);
   white-space: nowrap;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 tr:last-child td { border-bottom: none; }
 tbody tr:hover td {
-  background: rgba(0, 212, 255, 0.03);
+  background: rgba(0, 212, 255, 0.04);
 }
 
 /* ── Badges ── */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   font-family: 'Orbitron', monospace;
@@ -233,7 +233,7 @@ tbody tr:hover td {
   padding: 64px;
   color: var(--cyan-dim);
   gap: 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-family: 'Orbitron', monospace;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -258,7 +258,7 @@ tbody tr:hover td {
   text-align: center;
   padding: 48px 20px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-family: 'Orbitron', monospace;
   letter-spacing: 0.1em;
   text-transform: uppercase;

@@ -251,13 +251,13 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
 </template>
 
 <style scoped>
-.dashboard { display: flex; flex-direction: column; gap: 16px; }
+.dashboard { display: flex; flex-direction: column; gap: 18px; }
 
 /* ── Metric Row ── */
 .metrics-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
 }
 
 .metric-card {
@@ -265,7 +265,7 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 16px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -315,17 +315,17 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
 
 .mc-code {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
+  font-size: 10px;
   color: var(--muted);
   letter-spacing: 0.06em;
   background: var(--border);
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 1px;
 }
 
 .mc-label {
   font-family: 'Orbitron', monospace;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
@@ -333,22 +333,22 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
 }
 
 .mc-value {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 700;
   line-height: 1;
-  margin: 4px 0 2px;
+  margin: 2px 0 2px;
   letter-spacing: -0.02em;
 }
 
 .mc-sub {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text2);
   letter-spacing: 0.04em;
 }
 
 .mc-foot {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -371,8 +371,8 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
 
 .mc-bar-label {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  width: 22px;
+  font-size: 11px;
+  width: 24px;
   flex-shrink: 0;
 }
 
@@ -393,8 +393,8 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
 .mc-bar-fill.dn { background: var(--down); box-shadow: 0 0 4px var(--down); }
 
 .mc-bar-val {
-  font-size: 9px;
-  width: 20px;
+  font-size: 11px;
+  width: 22px;
   text-align: right;
   flex-shrink: 0;
 }
@@ -403,11 +403,11 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
 .hud-panel { }
 
 .date-tag {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 400;
   color: var(--muted);
   background: var(--border);
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 1px;
   letter-spacing: 0;
   text-transform: none;
@@ -425,8 +425,8 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
   gap: 8px;
   background: var(--surface2);
   border: 1px solid var(--border);
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 7px 14px;
+  font-size: 13px;
   position: relative;
   clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
   transition: all 0.2s;
@@ -442,14 +442,14 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
 }
 
 .chip-sym {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text2);
   letter-spacing: 0.06em;
 }
 
 .chip-net {
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .chip-bar-mini {
@@ -471,29 +471,29 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 18px;
 }
 
 .td-strategy {
   color: var(--text2);
   font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .sym-link {
   color: var(--cyan);
   font-weight: 500;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.04em;
 }
 .sym-link:hover { color: var(--neon); }
 
 .card-footer {
-  margin-top: 12px;
-  padding-top: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid var(--border2);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.04em;
 }
 
@@ -501,7 +501,7 @@ const recentTrades    = computed(() => trades.value.slice(0, 10))
 .card-footer a:hover { color: var(--neon); }
 
 .footer-arrow {
-  font-size: 8px;
+  font-size: 10px;
   opacity: 0.6;
   margin-right: 2px;
 }
