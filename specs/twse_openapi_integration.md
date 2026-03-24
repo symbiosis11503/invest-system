@@ -1,7 +1,7 @@
 # TWSE OpenAPI 整合計畫
 
 ## 現狀
-- 使用 5/143 endpoints
+- 使用 10/143 endpoints (Phase 1+2 完成)
 - Swagger: `data/twse_swagger_20260325.json`
 - 官方: `https://openapi.twse.com.tw/v1/swagger.json`
 - Rate Limit: ~3 req/5s
@@ -24,14 +24,14 @@
 | P1 | announcement/notice | 注意股票 | 20min |
 | P1 | announcement/punish | 處置股票 | 20min |
 
-## Phase 2 — 策略增強（下週）
-| Endpoint | 用途 |
-|----------|------|
-| TWT48U_ALL | 全市場 PER/殖利率/PBR |
-| FMNPTK_ALL | 三大法人年度 |
-| MI_QFIIS_cat | 外資持股類股比率 |
-| TWT96U | 借券賣出（放空指標） |
-| STOCK_DAY_AVG_ALL | 月均價 |
+## Phase 2 — 策略增強 ✅ (2026-03-25 完成)
+| Endpoint | 用途 | 筆數 |
+|----------|------|------|
+| TWT48U_ALL | 除權除息預告 | 73 |
+| FMNPTK_ALL | 年度成交（高低點/均價） | 60,699 |
+| MI_QFIIS_cat | 外資持股類股比率 | 36 |
+| TWT96U | 借券賣出（放空指標） | 1,857 |
+| STOCK_DAY_AVG_ALL | 收盤價+月均價 | 25,524 |
 
 ## Phase 3 — ESG + 公司治理（5月 M4P 64G）
 - t187ap46 系列: 21 個 ESG 指標 endpoint

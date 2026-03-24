@@ -1,4 +1,4 @@
-"""TWSE OpenAPI 公開資料抓取器 — PER/EPS/月營收/重大公告"""
+"""TWSE OpenAPI 公開資料抓取器 — PER/EPS/月營收/重大公告/融資融券/借券/月均價/外資類股/除權息"""
 import requests
 import json
 import sqlite3
@@ -18,6 +18,12 @@ API = {
     "eps": "https://openapi.twse.com.tw/v1/opendata/t187ap14_L",
     "revenue": "https://openapi.twse.com.tw/v1/opendata/t187ap05_L",
     "news": "https://openapi.twse.com.tw/v1/news/newsList",
+    # Phase 2
+    "stock_day_avg": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_AVG_ALL",
+    "sbl": "https://openapi.twse.com.tw/v1/SBL/TWT96U",
+    "qfiis_cat": "https://openapi.twse.com.tw/v1/fund/MI_QFIIS_cat",
+    "yearly_trade": "https://openapi.twse.com.tw/v1/exchangeReport/FMNPTK_ALL",
+    "ex_dividend": "https://openapi.twse.com.tw/v1/exchangeReport/TWT48U_ALL",
 }
 
 
@@ -382,6 +388,289 @@ def fetch_margin_trading():
         return 0
 
 
+def fetch_stock_day_avg():
+    """從 TWSE OpenAPI 抓個股收盤價及月均價（STOCK_DAY_AVG_ALL）"""
+    try:
+        resp = requests.get(API["stock_day_avg"], timeout=30, verify=False, headers=HEADERS)
+        data = resp.json()
+
+        conn = get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tw_stock_day_avg (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                symbol TEXT,
+                name TEXT,
+                closing_price REAL,
+                monthly_avg_price REAL,
+                UNIQUE(date, symbol)
+            )
+        """)
+
+        count = 0
+        for d in data:
+            code = d.get("Code", "").strip()
+            if not re.match(r'^\d{4,6}$', code):
+                continue
+            try:
+                roc_date = d.get("Date", "")
+                if len(roc_date) == 7:
+                    year = int(roc_date[:3]) + 1911
+                    date_str = f"{year}-{roc_date[3:5]}-{roc_date[5:7]}"
+                else:
+                    continue
+                close = float(d.get("ClosingPrice", "0").replace(",", "")) if d.get("ClosingPrice") else None
+                avg = float(d.get("MonthlyAveragePrice", "0").replace(",", "")) if d.get("MonthlyAveragePrice") else None
+                conn.execute("""
+                    INSERT OR REPLACE INTO tw_stock_day_avg (date, symbol, name, closing_price, monthly_avg_price)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (date_str, code, d.get("Name", ""), close, avg))
+                count += 1
+            except (ValueError, TypeError):
+                continue
+
+        conn.commit()
+        conn.close()
+        print(f"Stock day avg updated: {count} stocks")
+        return count
+    except Exception as e:
+        print(f"fetch_stock_day_avg error: {e}")
+        return 0
+
+
+def fetch_sbl():
+    """從 TWSE OpenAPI 抓借券賣出可用量（TWT96U — 放空指標）"""
+    try:
+        resp = requests.get(API["sbl"], timeout=15, verify=False, headers=HEADERS)
+        data = resp.json()
+
+        conn = get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tw_sbl (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                symbol TEXT,
+                available_volume INTEGER,
+                market TEXT DEFAULT 'TWSE',
+                UNIQUE(date, symbol, market)
+            )
+        """)
+
+        count = 0
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        def to_int(v):
+            return int(str(v).replace(",", "")) if v and str(v).strip() else 0
+
+        for d in data:
+            # TWSE listed
+            twse_code = d.get("TWSECode", "").strip()
+            if re.match(r'^\d{4,6}$', twse_code):
+                conn.execute("""
+                    INSERT OR IGNORE INTO tw_sbl (date, symbol, available_volume, market)
+                    VALUES (?, ?, ?, 'TWSE')
+                """, (today, twse_code, to_int(d.get("TWSEAvailableVolume"))))
+                count += 1
+            # OTC listed
+            gretai_code = d.get("GRETAICode", "").strip()
+            if re.match(r'^\d{4,6}$', gretai_code):
+                conn.execute("""
+                    INSERT OR IGNORE INTO tw_sbl (date, symbol, available_volume, market)
+                    VALUES (?, ?, ?, 'OTC')
+                """, (today, gretai_code, to_int(d.get("GRETAIAvailableVolume"))))
+                count += 1
+
+        conn.commit()
+        conn.close()
+        print(f"SBL (short selling) updated: {count} stocks")
+        return count
+    except Exception as e:
+        print(f"fetch_sbl error: {e}")
+        return 0
+
+
+def fetch_qfiis_cat():
+    """從 TWSE OpenAPI 抓外資持股類股比率（MI_QFIIS_cat）"""
+    try:
+        resp = requests.get(API["qfiis_cat"], timeout=15, verify=False, headers=HEADERS)
+        data = resp.json()
+
+        conn = get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tw_qfiis_cat (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                industry TEXT,
+                stock_count INTEGER,
+                total_shares INTEGER,
+                foreign_shares INTEGER,
+                percentage REAL,
+                UNIQUE(date, industry)
+            )
+        """)
+
+        count = 0
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        def to_int(v):
+            return int(str(v).replace(",", "")) if v and str(v).strip() else 0
+
+        for d in data:
+            industry = d.get("IndustryCat", "").strip()
+            if not industry:
+                continue
+            try:
+                conn.execute("""
+                    INSERT OR REPLACE INTO tw_qfiis_cat (date, industry, stock_count, total_shares, foreign_shares, percentage)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    today, industry,
+                    to_int(d.get("Numbers")),
+                    to_int(d.get("ShareNumber")),
+                    to_int(d.get("ForeignMainlandAreaShare")),
+                    float(d.get("Percentage", "0")) if d.get("Percentage") else 0,
+                ))
+                count += 1
+            except (ValueError, TypeError):
+                continue
+
+        conn.commit()
+        conn.close()
+        print(f"QFIIS category updated: {count} industries")
+        return count
+    except Exception as e:
+        print(f"fetch_qfiis_cat error: {e}")
+        return 0
+
+
+def fetch_yearly_trade():
+    """從 TWSE OpenAPI 抓年度成交資訊（FMNPTK_ALL — 年高低點/均價）"""
+    try:
+        resp = requests.get(API["yearly_trade"], timeout=30, verify=False, headers=HEADERS)
+        data = resp.json()
+
+        conn = get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tw_yearly_trade (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                year INTEGER,
+                symbol TEXT,
+                name TEXT,
+                trade_volume INTEGER,
+                trade_value INTEGER,
+                transactions INTEGER,
+                highest_price REAL,
+                highest_date TEXT,
+                lowest_price REAL,
+                lowest_date TEXT,
+                avg_closing_price REAL,
+                UNIQUE(year, symbol)
+            )
+        """)
+
+        count = 0
+
+        def to_int(v):
+            return int(str(v).replace(",", "")) if v and str(v).strip() else 0
+
+        for d in data:
+            code = d.get("Code", "").strip()
+            if not re.match(r'^\d{4,6}$', code):
+                continue
+            try:
+                roc_year = int(d.get("Year", "0"))
+                year = roc_year + 1911
+
+                def to_float(v):
+                    return float(str(v).replace(",", "")) if v and str(v).strip() else None
+
+                conn.execute("""
+                    INSERT OR REPLACE INTO tw_yearly_trade
+                    (year, symbol, name, trade_volume, trade_value, transactions,
+                     highest_price, highest_date, lowest_price, lowest_date, avg_closing_price)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    year, code, d.get("Name", ""),
+                    to_int(d.get("TradeVolume")),
+                    to_int(d.get("TradeValue")),
+                    to_int(d.get("Transaction")),
+                    to_float(d.get("HighestPrice")),
+                    d.get("HDate", ""),
+                    to_float(d.get("LowestPrice")),
+                    d.get("LDate", ""),
+                    to_float(d.get("AvgClosingPrice")),
+                ))
+                count += 1
+            except (ValueError, TypeError):
+                continue
+
+        conn.commit()
+        conn.close()
+        print(f"Yearly trade info updated: {count} stocks")
+        return count
+    except Exception as e:
+        print(f"fetch_yearly_trade error: {e}")
+        return 0
+
+
+def fetch_ex_dividend():
+    """從 TWSE OpenAPI 抓除權除息預告（TWT48U_ALL）"""
+    try:
+        resp = requests.get(API["ex_dividend"], timeout=15, verify=False, headers=HEADERS)
+        data = resp.json()
+
+        conn = get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tw_ex_dividend (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                symbol TEXT,
+                name TEXT,
+                ex_type TEXT,
+                stock_dividend_ratio REAL,
+                cash_dividend REAL,
+                UNIQUE(date, symbol, ex_type)
+            )
+        """)
+
+        count = 0
+        for d in data:
+            code = d.get("Code", "").strip()
+            if not re.match(r'^\d{4,6}$', code):
+                continue
+            try:
+                roc_date = d.get("Date", "")
+                if len(roc_date) == 7:
+                    year = int(roc_date[:3]) + 1911
+                    date_str = f"{year}-{roc_date[3:5]}-{roc_date[5:7]}"
+                else:
+                    continue
+
+                def to_float(v):
+                    return float(str(v).replace(",", "")) if v and str(v).strip() else 0
+
+                conn.execute("""
+                    INSERT OR REPLACE INTO tw_ex_dividend (date, symbol, name, ex_type, stock_dividend_ratio, cash_dividend)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    date_str, code, d.get("Name", ""),
+                    d.get("Exdividend", ""),
+                    to_float(d.get("StockDividendRatio")),
+                    to_float(d.get("CashDividend")),
+                ))
+                count += 1
+            except (ValueError, TypeError):
+                continue
+
+        conn.commit()
+        conn.close()
+        print(f"Ex-dividend schedule updated: {count} stocks")
+        return count
+    except Exception as e:
+        print(f"fetch_ex_dividend error: {e}")
+        return 0
+
+
 def fetch_all():
     """一次抓所有可用資料"""
     print(f"=== TWSE Fetch All @ {datetime.now().strftime('%Y-%m-%d %H:%M')} ===")
@@ -398,6 +687,17 @@ def fetch_all():
     results["announcements"] = fetch_major_announcements()
     time.sleep(1)
     results["margin"] = fetch_margin_trading()
+    time.sleep(2)
+    # Phase 2
+    results["stock_day_avg"] = fetch_stock_day_avg()
+    time.sleep(2)
+    results["sbl"] = fetch_sbl()
+    time.sleep(2)
+    results["qfiis_cat"] = fetch_qfiis_cat()
+    time.sleep(2)
+    results["yearly_trade"] = fetch_yearly_trade()
+    time.sleep(2)
+    results["ex_dividend"] = fetch_ex_dividend()
     print(f"\nResults: {json.dumps(results)}")
     return results
 

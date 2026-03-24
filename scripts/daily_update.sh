@@ -133,7 +133,7 @@ else
     tg_notify "⚠️ 投資系統: 新聞積壓處理失敗"
 fi
 
-if [ "$IS_WEEKEND" = false ]; then
+if [ "$IS_TRADING" = "true" ]; then
     # 3.7 融資融券（TWSE OpenAPI）
     TOTAL_STEPS=$((TOTAL_STEPS + 1))
     log "Fetching margin trading data..."
