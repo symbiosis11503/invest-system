@@ -176,6 +176,23 @@ else
     tg_notify "⚠️ 投資系統: 股東紀念品更新失敗"
 fi
 
+# 7. 財經日曆更新 (每天都跑)
+TOTAL_STEPS=$((TOTAL_STEPS + 1))
+log "Updating economic calendar..."
+cd "$INVEST_DIR"
+$VENV -c "
+from economic_calendar import fetch_and_store, init_calendar_table
+init_calendar_table()
+result = fetch_and_store(days=7)
+print(f'Economic calendar: {result}')
+" >> "$LOG" 2>&1
+if [ $? -eq 0 ]; then
+    OK_STEPS=$((OK_STEPS + 1))
+else
+    log "ERROR: Economic calendar update failed"
+    tg_notify "⚠️ 投資系統: 財經日曆更新失敗"
+fi
+
 log "========== DAILY UPDATE DONE ($OK_STEPS/$TOTAL_STEPS OK) =========="
 
 # 結尾摘要通知

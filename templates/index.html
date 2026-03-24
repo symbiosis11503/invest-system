@@ -20,6 +20,8 @@
 .latest-news { grid-column: span 1; }
 .eps-leaders { grid-column: span 1; }
 .screener-quick { grid-column: span 2; }
+.gift-deadline { grid-column: span 1; }
+.eco-events { grid-column: span 1; }
 
 /* Market ticker row */
 .ticker-row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0; }
@@ -61,8 +63,23 @@
 
 @media (max-width: 900px) {
   .dashboard-grid { grid-template-columns: 1fr; }
-  .market-overview, .market-sentiment, .institutional-flow, .top-strategies, .latest-news { grid-column: span 1; }
+  .market-overview, .market-sentiment, .institutional-flow, .top-strategies, .latest-news, .gift-deadline, .eco-events { grid-column: span 1; }
 }
+
+/* Gift deadline item */
+.gift-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.82em; }
+.gift-item:last-child { border-bottom: none; }
+.gift-item .gift-stock { font-weight: 500; }
+.gift-item .gift-desc { font-size: 0.72em; color: var(--text-tertiary); margin-top: 2px; }
+.gift-item .gift-deadline-tag { font-family: var(--font-mono); font-size: 0.75em; padding: 2px 8px; border-radius: 4px; background: rgba(255,107,53,0.15); color: #ff6b35; white-space: nowrap; }
+.gift-item .gift-deadline-tag.urgent { background: rgba(255,59,48,0.2); color: #ff3b30; }
+
+/* Economic event item */
+.eco-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.82em; }
+.eco-item:last-child { border-bottom: none; }
+.eco-item .eco-time { font-family: var(--font-mono); font-size: 0.78em; color: var(--text-tertiary); min-width: 44px; }
+.eco-item .eco-name { flex: 1; margin: 0 8px; }
+.eco-item .eco-flag { font-size: 0.9em; }
 </style>
 </head>
 <body>
@@ -136,6 +153,22 @@
       <div class="card-title">最新情報 <a href="/intelligence" style="float:right;font-size:.85em">更多 →</a></div>
       <div id="news-list">
         <div class="skeleton" style="height:200px"></div>
+      </div>
+    </div>
+
+    <!-- Gift Deadline -->
+    <div class="card gift-deadline">
+      <div class="card-title">本週紀念品截止 <a href="/shareholder-gifts" style="float:right;font-size:.85em">查看全部 →</a></div>
+      <div id="gift-list">
+        <div class="skeleton" style="height:100px"></div>
+      </div>
+    </div>
+
+    <!-- Today Economic Events -->
+    <div class="card eco-events">
+      <div class="card-title">今日財經事件 <a href="/economic-calendar" style="float:right;font-size:.85em">完整日曆 →</a></div>
+      <div id="eco-list">
+        <div class="skeleton" style="height:100px"></div>
       </div>
     </div>
 
@@ -281,6 +314,53 @@ async function loadDashboard() {
       return `<div class="flow-item"><span class="stock">${s.symbol} ${escapeHtml(s.name_zh||'')}</span><span class="amount" style="color:var(--price-up);font-weight:600">${Number(s.eps||0).toFixed(1)}</span></div>`;
     }).join('') || '<div style="color:var(--text-tertiary);font-size:.85em">無資料</div>';
   } catch {}
+
+  // Gift Deadline (next 7 days)
+  try {
+    const gifts = await (await fetch('/api/shareholder-gifts/upcoming?days=7')).json();
+    const giftList = document.getElementById('gift-list');
+    if (gifts.length > 0) {
+      giftList.innerHTML = gifts.slice(0,6).map(g => {
+        const daysLeft = Math.ceil((new Date(g.last_buy_date) - new Date()) / 86400000);
+        const urgentCls = daysLeft <= 2 ? ' urgent' : '';
+        const dayLabel = daysLeft <= 0 ? '今天' : daysLeft + '天';
+        return `<div class="gift-item">
+          <div><div class="gift-stock">${escapeHtml(g.stock_id)} ${escapeHtml(g.stock_name||'')}</div><div class="gift-desc">${escapeHtml(g.gift_item||'未公布')}</div></div>
+          <div class="gift-deadline-tag${urgentCls}">${g.last_buy_date?.slice(5)||''} (${dayLabel})</div>
+        </div>`;
+      }).join('');
+    } else {
+      giftList.innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">本週無截止紀念品</div>';
+    }
+  } catch { document.getElementById('gift-list').innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">載入失敗</div>'; }
+
+  // Today Economic Events (high importance)
+  try {
+    const events = await (await fetch('/api/economic-calendar/today')).json();
+    const ecoList = document.getElementById('eco-list');
+    const highEvents = events.filter(e => e.importance === 'high');
+    if (highEvents.length > 0) {
+      ecoList.innerHTML = highEvents.slice(0,6).map(e => {
+        const flag = e.country_flag || '';
+        const time = (e.event_time||'').slice(0,5) || '--:--';
+        return `<div class="eco-item">
+          <span class="eco-time">${time}</span>
+          <span class="eco-name">${flag} ${escapeHtml(e.event_name||e.title||'')}</span>
+        </div>`;
+      }).join('');
+    } else if (events.length > 0) {
+      // Show medium if no high
+      ecoList.innerHTML = events.filter(e => e.importance !== 'low').slice(0,5).map(e => {
+        const time = (e.event_time||'').slice(0,5) || '--:--';
+        return `<div class="eco-item">
+          <span class="eco-time">${time}</span>
+          <span class="eco-name">${e.country_flag||''} ${escapeHtml(e.event_name||e.title||'')}</span>
+        </div>`;
+      }).join('') || '<div style="color:var(--text-tertiary);font-size:.85em">今日無重要事件</div>';
+    } else {
+      ecoList.innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">今日無財經事件</div>';
+    }
+  } catch { document.getElementById('eco-list').innerHTML = '<div style="color:var(--text-tertiary);font-size:.85em">載入失敗</div>'; }
 }
 
 loadDashboard();
