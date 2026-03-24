@@ -13,14 +13,14 @@ DB_PATH.parent.mkdir(exist_ok=True)
 
 # API Keys（從環境變數或 ai-hub 讀取）
 def load_env():
-    """載入 ai-hub 共用 .env"""
-    env_path = Path.home() / '.config' / 'ai-hub' / 'shared' / '.env'
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith('#') and '=' in line:
-                key, _, value = line.partition('=')
-                os.environ.setdefault(key.strip(), value.strip())
+    """載入 .env（專案本地 + ai-hub 共用）"""
+    for env_path in [BASE_DIR / '.env', Path.home() / '.config' / 'ai-hub' / 'shared' / '.env']:
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, _, value = line.partition('=')
+                    os.environ.setdefault(key.strip(), value.strip())
 
 load_env()
 

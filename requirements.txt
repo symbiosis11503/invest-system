@@ -19,6 +19,8 @@ peewee==4.0.2
 platformdirs==4.9.4
 protobuf==7.34.0
 pyaes==1.6.1
+py-vapid==1.9.3
+pywebpush==2.0.1
 pyasn1==0.6.3
 pycparser==3.0
 python-dateutil==2.9.0.post0

@@ -7,6 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/invest-base.css">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#e94560">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 .dashboard-grid {
   display: grid;
@@ -364,6 +368,46 @@ async function loadDashboard() {
 }
 
 loadDashboard();
+
+// ─── PWA Push Notification ───
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(function(reg) {
+    console.log('SW registered');
+    // Check push subscription
+    if ('PushManager' in window) {
+      reg.pushManager.getSubscription().then(function(sub) {
+        if (!sub) {
+          // Auto-prompt for notification permission
+          fetch('/api/push/vapid-key').then(r => r.json()).then(function(data) {
+            if (!data.publicKey) return;
+            const key = urlBase64ToUint8Array(data.publicKey);
+            Notification.requestPermission().then(function(perm) {
+              if (perm === 'granted') {
+                reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+                  .then(function(newSub) {
+                    fetch('/api/push/subscribe', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ subscription: newSub.toJSON(), label: 'web' })
+                    });
+                  });
+              }
+            });
+          });
+        }
+      });
+    }
+  });
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
 </script>
 </body>
 </html>

@@ -12,9 +12,12 @@ mkdir -p "$INVEST_DIR/logs"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG"; }
 
-# Telegram 錯誤通知
-TG_BOT_TOKEN="8585765797:AAGYUDdSSTgOmz2TS3d9zsjk4F7T_VdWzao"
-TG_CHAT_ID="6927318445"
+# Telegram 錯誤通知 (從 .env 讀取)
+if [ -f "$INVEST_DIR/.env" ]; then
+    export $(grep -v '^#' "$INVEST_DIR/.env" | xargs)
+fi
+TG_BOT_TOKEN="${TG_BOT_TOKEN:-}"
+TG_CHAT_ID="${TG_CHAT_ID:-}"
 tg_notify() {
     local msg="$1"
     curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
@@ -54,6 +57,30 @@ else:
     else
         log "ERROR: Market data update failed"
         tg_notify "⚠️ 投資系統: 台股行情更新失敗"
+    fi
+
+    # 1.5 國際指數 + 商品行情 (yfinance)
+    TOTAL_STEPS=$((TOTAL_STEPS + 1))
+    log "Updating index & commodity data (yfinance)..."
+    $VENV -c "
+from data.fetcher import fetch_yfinance, save_to_db
+symbols = ['^TWII', '^GSPC', '^DJI', '^IXIC', '^N225', '^HSI', 'GC=F', 'CL=F', 'BTC-USD', 'ETH-USD']
+total = 0
+for sym in symbols:
+    try:
+        data = fetch_yfinance(sym, period='5d')
+        if data:
+            saved = save_to_db(data, source='yfinance')
+            total += saved
+    except Exception as e:
+        print(f'  {sym}: {e}')
+print(f'Index/commodity: {total} rows saved ({len(symbols)} symbols)')
+" >> "$LOG" 2>&1
+    if [ $? -eq 0 ]; then
+        OK_STEPS=$((OK_STEPS + 1))
+    else
+        log "ERROR: Index data update failed"
+        tg_notify "⚠️ 投資系統: 國際指數更新失敗"
     fi
 
     # 2. FinMind 籌碼更新
@@ -224,6 +251,8 @@ log "========== DAILY UPDATE DONE ($OK_STEPS/$TOTAL_STEPS OK) =========="
 # 結尾摘要通知
 if [ "$OK_STEPS" -eq "$TOTAL_STEPS" ]; then
     tg_notify "✅ 投資系統每日更新完成: $OK_STEPS/$TOTAL_STEPS 步驟成功"
+    $VENV "$INVEST_DIR/push_notify.py" "投資系統更新完成" "$OK_STEPS/$TOTAL_STEPS 步驟成功" "/" "daily-update" 2>/dev/null
 else
     tg_notify "⚠️ 投資系統每日更新完成: $OK_STEPS/$TOTAL_STEPS 步驟成功 (有失敗項目，查看 log)"
+    $VENV "$INVEST_DIR/push_notify.py" "投資更新有失敗" "$OK_STEPS/$TOTAL_STEPS 成功，請檢查" "/" "daily-update" 2>/dev/null
 fi

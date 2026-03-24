@@ -2044,6 +2044,127 @@ def api_yearly_trade(symbol):
     return jsonify(rows_to_dicts(rows))
 
 
+# ─── PWA Push Notification ───────────────────────────────────
+
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_CONTACT = os.environ.get('VAPID_CONTACT', 'mailto:symbiosis11503@gmail.com')
+PUSH_DB = os.path.join(BASE_DIR, "db/push_subscriptions.db")
+
+
+def _init_push_db():
+    conn = sqlite3.connect(PUSH_DB)
+    conn.execute("""CREATE TABLE IF NOT EXISTS subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        endpoint TEXT UNIQUE NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        label TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now'))
+    )""")
+    conn.commit()
+    conn.close()
+
+_init_push_db()
+
+
+@app.route("/api/push/vapid-key")
+def push_vapid_key():
+    return jsonify({"publicKey": VAPID_PUBLIC_KEY})
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+def push_subscribe():
+    data = request.get_json()
+    if not data or 'subscription' not in data:
+        return jsonify({"error": "missing subscription"}), 400
+    sub = data['subscription']
+    endpoint = sub.get('endpoint', '')
+    keys = sub.get('keys', {})
+    label = data.get('label', '')
+    if not endpoint or not keys.get('p256dh') or not keys.get('auth'):
+        return jsonify({"error": "invalid subscription"}), 400
+    conn = sqlite3.connect(PUSH_DB)
+    conn.execute("""INSERT OR REPLACE INTO subscriptions (endpoint, p256dh, auth, label)
+                    VALUES (?, ?, ?, ?)""", (endpoint, keys['p256dh'], keys['auth'], label))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+def push_unsubscribe():
+    data = request.get_json()
+    if not data or 'endpoint' not in data:
+        return jsonify({"error": "missing endpoint"}), 400
+    conn = sqlite3.connect(PUSH_DB)
+    conn.execute("DELETE FROM subscriptions WHERE endpoint = ?", (data['endpoint'],))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/push/send", methods=["POST"])
+def push_send():
+    """Send push notification to all subscribers. Internal API."""
+    if request.remote_addr not in ('127.0.0.1', '::1'):
+        return jsonify({"error": "localhost only"}), 403
+    data = request.get_json()
+    if not data or 'title' not in data:
+        return jsonify({"error": "missing title"}), 400
+    if not VAPID_PRIVATE_KEY:
+        return jsonify({"error": "VAPID not configured"}), 500
+
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        return jsonify({"error": "pywebpush not installed"}), 500
+
+    payload = json.dumps({
+        "title": data['title'],
+        "body": data.get('body', ''),
+        "url": data.get('url', '/'),
+        "tag": data.get('tag', 'invest-notification')
+    })
+
+    conn = sqlite3.connect(PUSH_DB)
+    subs = conn.execute("SELECT endpoint, p256dh, auth FROM subscriptions").fetchall()
+    conn.close()
+
+    sent, failed = 0, 0
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={"endpoint": sub[0], "keys": {"p256dh": sub[1], "auth": sub[2]}},
+                data=payload,
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims={"sub": VAPID_CONTACT}
+            )
+            sent += 1
+        except Exception:
+            failed += 1
+            # Remove invalid subscription
+            conn2 = sqlite3.connect(PUSH_DB)
+            conn2.execute("DELETE FROM subscriptions WHERE endpoint = ?", (sub[0],))
+            conn2.commit()
+            conn2.close()
+
+    return jsonify({"sent": sent, "failed": failed, "total": len(subs)})
+
+
+@app.route("/api/push/stats")
+def push_stats():
+    conn = sqlite3.connect(PUSH_DB)
+    count = conn.execute("SELECT COUNT(*) FROM subscriptions").fetchone()[0]
+    conn.close()
+    return jsonify({"subscribers": count, "vapid_configured": bool(VAPID_PUBLIC_KEY)})
+
+
+@app.route("/sw.js")
+def service_worker():
+    return send_from_directory(app.static_folder, 'sw.js', mimetype='application/javascript')
+
+
 if __name__ == "__main__":
     print("投資系統 Web App 啟動中...")
     print("http://localhost:18900")

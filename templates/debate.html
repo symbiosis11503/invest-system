@@ -6,6 +6,8 @@
 <title>AI 辯論分析 — Symbiosis Invest</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/invest-base.css">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#e94560">
 <style>
 .debate-input { display: flex; gap: 12px; margin-bottom: 24px; }
 .debate-input input {
@@ -164,6 +166,9 @@ async function startDebate() {
 document.getElementById('symbolInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') startDebate();
 });
+</script>
+<script>
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').then(function(r){if('PushManager' in window){r.pushManager.getSubscription().then(function(s){if(!s){fetch('/api/push/vapid-key').then(function(x){return x.json()}).then(function(d){if(!d.publicKey)return;var p='='.repeat((4-d.publicKey.length%4)%4),b=atob((d.publicKey+p).replace(/-/g,'+').replace(/_/g,'/')),k=new Uint8Array(b.length);for(var i=0;i<b.length;i++)k[i]=b.charCodeAt(i);Notification.requestPermission().then(function(pm){if(pm==='granted')r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:k}).then(function(ns){fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:ns.toJSON(),label:'web'})})})})})}})}})};
 </script>
 </body>
 </html>

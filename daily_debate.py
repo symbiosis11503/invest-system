@@ -49,7 +49,7 @@ def get_top_movers(limit=5):
 
 def send_to_tg(text, chat_id=None):
     """推播到 TG（Markdown 失敗自動退回純文字）"""
-    bot_token = os.environ.get('TG_BOT_TOKEN', '8585052129:AAGqJyRNJGxL7bUPr1VuRGtbB2eSFIBCcEM')
+    bot_token = os.environ.get('TG_DEBATE_BOT_TOKEN') or os.environ.get('TG_BOT_TOKEN', '')
     chat_id = chat_id or os.environ.get('TG_CHAT_ID', '6927318445')
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     try:
@@ -68,6 +68,13 @@ def send_to_tg(text, chat_id=None):
                 )
     except Exception as e:
         print(f"TG 推播失敗: {e}")
+    # Also send web push
+    try:
+        from push_notify import send_push
+        title_line = text.split('\n')[0][:80]
+        send_push(title_line, text[:200], url="/debate", tag="debate")
+    except Exception:
+        pass
 
 
 def main():
