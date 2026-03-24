@@ -1,9 +1,10 @@
 """股東紀念品追蹤器 — 抓取 + 儲存 + API
 來源優先序：
   1. stockgift.tw    — 伺服器端渲染 HTML，資料最完整（含零股寄單、股代電話）
-  2. sinotrade.com.tw — __NEXT_DATA__ 內嵌 JSON（僅前 10 筆，但含 odd/div/price）
-  3. goodinfo.tw      — 舊版 fallback（易被封鎖）
-  4. histock.tw       — 舊版 fallback（易被封鎖）
+  2. gooddie.tw      — 664 筆完整清單，補 stockgift 缺漏（無零股欄位）
+  3. sinotrade.com.tw — __NEXT_DATA__ 內嵌 JSON（僅前 10 筆，但含 odd/div/price）
+  4. goodinfo.tw      — 舊版 fallback（易被封鎖）
+  5. histock.tw       — 舊版 fallback（易被封鎖）
 """
 import sqlite3
 import ssl
@@ -298,7 +299,159 @@ def fetch_from_stockgift(year=None):
     return results
 
 
-# ── Fetcher 2: sinotrade.com.tw (永豐金證券) ──────────
+def _is_undecided_gift(text: str) -> bool:
+    """判斷紀念品是否為「未決定」狀態"""
+    if not text:
+        return True
+    undecided = ('未決定', '尚未公布', '尚未公告', '未公告',
+                 '開會55日前再行公告', '待公告')
+    text_clean = text.strip().strip('(（)）')
+    return text_clean in undecided or '日前再行公告' in text
+
+
+# ── Fetcher 2: gooddie.tw (補充來源，664 筆) ──────────
+
+def fetch_from_gooddie(year=None):
+    """從 gooddie.tw 抓股東紀念品 — card-based layout，每頁 20 筆
+    優點: 資料筆數最多 (~664)，可補 stockgift.tw 缺漏
+    缺點: 無零股欄位、需分頁抓取
+    """
+    if year is None:
+        year = date.today().year
+
+    base_url = f'http://www.gooddie.tw/stock/meeting/{year}?Sort=no'
+    results = []
+    page = 1
+    max_pages = 50  # 安全上限
+
+    while page <= max_pages:
+        url = f'{base_url}&page={page}' if page > 1 else base_url
+        html = _http_get(url)
+        if not html:
+            break
+
+        # 第一頁取總筆數
+        if page == 1:
+            total_match = re.search(r'共\s*<span[^>]*>\s*(\d+)\s*</span>\s*筆', html)
+            if total_match:
+                total = int(total_match.group(1))
+                max_pages = min(max_pages, (total + 19) // 20)  # 20 per page
+                print(f"[gooddie] total: {total} records, {max_pages} pages")
+            else:
+                print("[gooddie] could not find total count, will paginate until empty")
+
+        # 分割 cards
+        cards = html.split('<div class="card">')
+        if len(cards) <= 1:
+            break  # 沒有更多資料
+
+        page_count = 0
+        for card_html in cards[1:]:
+            # 1) 股號 + 股名 + 開會日 from collapse link
+            #    "1101 台泥 5/22 常會" or "1101 台泥 5/22 臨時"
+            link_match = re.search(
+                r'data-toggle="collapse"[^>]*>\s*(\d{4,6})\s+([\u4e00-\u9fff\w（）\-]+)\s+(\d{1,2}/\d{1,2})',
+                card_html
+            )
+            if not link_match:
+                continue
+
+            sid = link_match.group(1)
+            stock_name = link_match.group(2).strip()
+            # 清理股名尾碼數字
+            stock_name = re.sub(r'\d+$', '', stock_name)
+
+            meeting_md = link_match.group(3)  # e.g. "5/22"
+            meeting_parts = meeting_md.split('/')
+            if len(meeting_parts) == 2:
+                meeting_date = f"{year}-{int(meeting_parts[0]):02d}-{int(meeting_parts[1]):02d}"
+            else:
+                meeting_date = None
+
+            # 2) 紀念品 — 依序嘗試多種 HTML 模式
+            gift_item = None
+
+            # Pattern A: data-content on popover (最常見的已公告格式)
+            popover_match = re.search(
+                r'data-toggle="popover"[^>]*data-content="([^"]+)"',
+                card_html
+            )
+            if popover_match:
+                gift_text = popover_match.group(1).strip()
+                if gift_text and not _is_undecided_gift(gift_text):
+                    gift_item = gift_text
+
+            # Pattern B: text-truncate title 在 stock link 之後（無 popover 時）
+            if not gift_item:
+                # 找 stock link 之後的 text-truncate title
+                title_match = re.search(
+                    r'歷年發放.*?<div class="text-truncate"\s+title="([^"]+)"',
+                    card_html, re.DOTALL
+                )
+                if not title_match:
+                    # 有些卡片沒有「歷年發放」連結，用另一種定位
+                    title_match = re.search(
+                        r'持股紀錄.*?<div class="text-truncate"\s+title="([^"]+)"',
+                        card_html, re.DOTALL
+                    )
+                if title_match:
+                    gift_text = title_match.group(1).strip()
+                    if gift_text and not _is_undecided_gift(gift_text) \
+                       and not re.match(r'^\d{4,6}\s', gift_text):
+                        gift_item = gift_text
+
+            # Pattern C: 直接在 col text-truncate div 內的純文字
+            if not gift_item:
+                plain_match = re.search(
+                    r'<div class="col text-truncate">\s*\n\s*([^\s<][^<]{2,}?)\s*</div>',
+                    card_html
+                )
+                if plain_match:
+                    gift_text = plain_match.group(1).strip()
+                    if gift_text and not _is_undecided_gift(gift_text) \
+                       and not re.match(r'^\d{4,6}\s', gift_text) \
+                       and '持股紀錄' not in gift_text:
+                        gift_item = gift_text
+
+            # 3) 最後買進日 — after <div class="title">最後買進日</div>
+            last_buy_date = None
+            lbd_match = re.search(
+                r'<div class="title">最後買進日</div>\s*</div>\s*<div class="col">\s*'
+                r'(\d{1,2}/\d{1,2})',
+                card_html
+            )
+            if lbd_match:
+                lbd_md = lbd_match.group(1)
+                lbd_parts = lbd_md.split('/')
+                if len(lbd_parts) == 2:
+                    last_buy_date = f"{year}-{int(lbd_parts[0]):02d}-{int(lbd_parts[1]):02d}"
+
+            gift = {
+                'stock_id': sid,
+                'stock_name': stock_name,
+                'meeting_date': meeting_date,
+                'last_buy_date': last_buy_date,
+                'fractional_eligible': '未知',  # gooddie.tw 無此欄位
+                'gift_item': gift_item,
+                'gift_value': None,
+                'year': year,
+                'source_url': f'http://www.gooddie.tw/stock/meeting/{year}',
+            }
+            results.append(gift)
+            page_count += 1
+
+        if page_count == 0:
+            break  # 此頁無資料，結束
+
+        page += 1
+        time.sleep(0.5)  # 禮貌性延遲
+
+    announced = sum(1 for r in results if r['gift_item'])
+    print(f"[gooddie] parsed {len(results)} records ({announced} announced)")
+    return results
+
+
+# ── Fetcher 3: sinotrade.com.tw (永豐金證券) ──────────
 
 def fetch_from_sinotrade(year=None):
     """從 sinotrade.com.tw/richclub/tools/gifts 抓取
@@ -553,7 +706,7 @@ def fetch_from_histock(year=None):
 
 def fetch_gifts(year=None):
     """抓取股東紀念品，依序嘗試多個來源
-    優先序: stockgift.tw → sinotrade → goodinfo → histock
+    優先序: stockgift.tw → gooddie.tw → sinotrade → goodinfo → histock
     """
     if year is None:
         year = date.today().year
@@ -564,9 +717,22 @@ def fetch_gifts(year=None):
     print("[fetch] Trying stockgift.tw...")
     gifts = fetch_from_stockgift(year)
 
-    # 來源 2: sinotrade (補充，合併進 gifts)
+    # 來源 2: gooddie.tw (補充缺漏，合併新股號)
+    print("[fetch] Trying gooddie.tw to fill gaps...")
+    gooddie_gifts = fetch_from_gooddie(year)
+    if gooddie_gifts:
+        existing_ids = {g['stock_id'] for g in gifts}
+        new_count = 0
+        for gg in gooddie_gifts:
+            if gg['stock_id'] not in existing_ids:
+                gifts.append(gg)
+                existing_ids.add(gg['stock_id'])
+                new_count += 1
+        print(f"[fetch] merged gooddie.tw: +{new_count} new, total: {len(gifts)}")
+
+    # 來源 3: sinotrade (補充，合併進 gifts)
     if len(gifts) < 50:
-        print("[fetch] stockgift.tw insufficient, trying sinotrade...")
+        print("[fetch] insufficient data, trying sinotrade...")
         sino_gifts = fetch_from_sinotrade(year)
         if sino_gifts:
             existing_ids = {g['stock_id'] for g in gifts}
@@ -575,12 +741,12 @@ def fetch_gifts(year=None):
                     gifts.append(sg)
             print(f"[fetch] merged sinotrade, total: {len(gifts)}")
 
-    # 來源 3: Goodinfo fallback
+    # 來源 4: Goodinfo fallback
     if not gifts:
         print("[fetch] Primary sources failed, trying Goodinfo...")
         gifts = fetch_from_goodinfo(year)
 
-    # 來源 4: HiStock fallback
+    # 來源 5: HiStock fallback
     if not gifts:
         print("[fetch] Goodinfo failed, trying HiStock...")
         gifts = fetch_from_histock(year)
@@ -701,6 +867,14 @@ if __name__ == "__main__":
         print(f"Got {len(gifts)} from stockgift.tw")
         for g in gifts[:5]:
             print(f"  {g['stock_id']} {g['stock_name']} | {g['gift_item']} | 最後買進: {g['last_buy_date']}")
+    elif len(sys.argv) > 1 and sys.argv[1] == '--gooddie':
+        # 單獨測試 gooddie.tw
+        gifts = fetch_from_gooddie()
+        print(f"Got {len(gifts)} from gooddie.tw")
+        announced = [g for g in gifts if g['gift_item']]
+        print(f"  Announced: {len(announced)}, Unannounced: {len(gifts) - len(announced)}")
+        for g in gifts[:10]:
+            print(f"  {g['stock_id']} {g['stock_name']} | {g['gift_item'] or '(未決定)'} | 最後買進: {g['last_buy_date']}")
     elif len(sys.argv) > 1 and sys.argv[1] == '--sinotrade':
         # 單獨測試 sinotrade
         gifts = fetch_from_sinotrade()
