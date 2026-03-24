@@ -26,16 +26,15 @@ tg_notify() {
 TOTAL_STEPS=0
 OK_STEPS=0
 
-# 判斷是否為週末 (6=六, 0=日)
-DAY_OF_WEEK=$(date +%w)
-IS_WEEKEND=false
-if [ "$DAY_OF_WEEK" -eq 0 ] || [ "$DAY_OF_WEEK" -eq 6 ]; then
-    IS_WEEKEND=true
-fi
+# 先更新休市日曆（每次都跑，確保最新）
+$VENV -c "from data.twse_fetcher import fetch_holiday_schedule; fetch_holiday_schedule()" >> "$LOG" 2>&1
 
-log "========== DAILY UPDATE START (weekend=$IS_WEEKEND) =========="
+# 用 TWSE 休市日曆判斷是否為交易日（涵蓋週末 + 國定假日）
+IS_TRADING=$($VENV data/twse_fetcher.py --check-trading-day 2>/dev/null && echo true || echo false)
 
-if [ "$IS_WEEKEND" = false ]; then
+log "========== DAILY UPDATE START (trading_day=$IS_TRADING) =========="
+
+if [ "$IS_TRADING" = "true" ]; then
     # 1. 台股行情 (yfinance 增量)
     TOTAL_STEPS=$((TOTAL_STEPS + 1))
     log "Updating market data..."
@@ -87,7 +86,7 @@ print(f'FinMind: {len(symbols)} stocks updated')
         tg_notify "⚠️ 投資系統: TWSE 指標更新失敗"
     fi
 else
-    log "Weekend — skipping market data / chip data / TWSE indicators"
+    log "Non-trading day — skipping market data / chip data / TWSE indicators"
 fi
 
 # 3. 新聞收集 + AI 分析 (每天都跑，含週末)
@@ -135,6 +134,21 @@ else
 fi
 
 if [ "$IS_WEEKEND" = false ]; then
+    # 3.7 融資融券（TWSE OpenAPI）
+    TOTAL_STEPS=$((TOTAL_STEPS + 1))
+    log "Fetching margin trading data..."
+    $VENV -c "
+from data.twse_fetcher import fetch_margin_trading
+count = fetch_margin_trading()
+print(f'Margin trading: {count} stocks')
+" >> "$LOG" 2>&1
+    if [ $? -eq 0 ]; then
+        OK_STEPS=$((OK_STEPS + 1))
+    else
+        log "ERROR: Margin trading fetch failed"
+        tg_notify "⚠️ 投資系統: 融資融券抓取失敗"
+    fi
+
     # 3.8 分點主力抓取（重點股票近1日）
     TOTAL_STEPS=$((TOTAL_STEPS + 1))
     log "Fetching broker trading data..."
@@ -168,7 +182,7 @@ if [ "$IS_WEEKEND" = false ]; then
         tg_notify "⚠️ 投資系統: 每日報告產生失敗"
     fi
 else
-    log "Weekend — skipping auto analysis & daily report"
+    log "Non-trading day — skipping auto analysis & daily report"
 fi
 
 # 6. 股東紀念品更新 (每天都跑)

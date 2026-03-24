@@ -236,11 +236,159 @@ def fetch_major_announcements():
         return 0
 
 
+def fetch_holiday_schedule():
+    """從 TWSE OpenAPI 抓休市日曆，存入 DB，回傳休市日列表"""
+    try:
+        resp = requests.get(
+            "https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule",
+            timeout=15, verify=False, headers=HEADERS
+        )
+        data = resp.json()
+
+        conn = get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tw_holidays (
+                date TEXT PRIMARY KEY,
+                name TEXT,
+                weekday TEXT,
+                description TEXT,
+                updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+            )
+        """)
+
+        holidays = []
+        for item in data:
+            roc_date = item.get("Date", "")
+            if len(roc_date) != 7:
+                continue
+            year = int(roc_date[:3]) + 1911
+            month = roc_date[3:5]
+            day = roc_date[5:7]
+            date_str = f"{year}-{month}-{day}"
+            name = item.get("Name", "")
+            desc = item.get("Description", "")
+
+            # 只存非交易日（排除「開始交易」的標記）
+            if "開始交易" in name:
+                continue
+
+            conn.execute("""
+                INSERT OR REPLACE INTO tw_holidays (date, name, weekday, description)
+                VALUES (?, ?, ?, ?)
+            """, (date_str, name, item.get("Weekday", ""), desc))
+            holidays.append(date_str)
+
+        conn.commit()
+        conn.close()
+        print(f"Holiday schedule: {len(holidays)} days saved")
+        return holidays
+    except Exception as e:
+        print(f"fetch_holiday_schedule error: {e}")
+        return []
+
+
+def is_trading_day(date_str=None):
+    """檢查指定日期是否為交易日（非週末 + 非休市日）
+
+    Args:
+        date_str: YYYY-MM-DD 格式，預設今天
+    Returns:
+        bool: True = 交易日
+    """
+    from datetime import date
+    if date_str is None:
+        d = date.today()
+        date_str = d.strftime("%Y-%m-%d")
+    else:
+        d = date.fromisoformat(date_str)
+
+    # 週末不交易
+    if d.weekday() >= 5:
+        return False
+
+    # 查 DB 休市日
+    try:
+        conn = get_conn()
+        row = conn.execute(
+            "SELECT 1 FROM tw_holidays WHERE date = ?", (date_str,)
+        ).fetchone()
+        conn.close()
+        return row is None
+    except Exception:
+        # DB 沒有 tw_holidays 表，退回只檢查週末
+        return True
+
+
+def fetch_margin_trading():
+    """從 TWSE OpenAPI 抓融資融券（每日更新）"""
+    try:
+        resp = requests.get(
+            "https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN",
+            timeout=15, verify=False, headers=HEADERS
+        )
+        data = resp.json()
+
+        conn = get_conn()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tw_margin (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                symbol TEXT,
+                margin_buy INTEGER,
+                margin_sell INTEGER,
+                margin_balance INTEGER,
+                short_sell INTEGER,
+                short_buy INTEGER,
+                short_balance INTEGER,
+                UNIQUE(date, symbol)
+            )
+        """)
+
+        count = 0
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        def to_int(v):
+            return int(str(v).replace(",", "")) if v and str(v).strip() else 0
+
+        for d in data:
+            code = d.get("股票代號", "").strip()
+            if not re.match(r'^\d{4}$', code):
+                continue
+            try:
+                conn.execute("""
+                    INSERT OR IGNORE INTO tw_margin
+                    (date, symbol, margin_buy, margin_sell, margin_balance,
+                     short_sell, short_buy, short_balance)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    today, code,
+                    to_int(d.get("融資買進")),
+                    to_int(d.get("融資賣出")),
+                    to_int(d.get("融資今日餘額")),
+                    to_int(d.get("融券賣出")),
+                    to_int(d.get("融券買進")),
+                    to_int(d.get("融券今日餘額")),
+                ))
+                count += 1
+            except (ValueError, TypeError):
+                continue
+
+        conn.commit()
+        conn.close()
+        print(f"Margin trading updated: {count} stocks")
+        return count
+    except Exception as e:
+        print(f"fetch_margin_trading error: {e}")
+        return 0
+
+
 def fetch_all():
     """一次抓所有可用資料"""
     print(f"=== TWSE Fetch All @ {datetime.now().strftime('%Y-%m-%d %H:%M')} ===")
     init_tables()
     results = {}
+    results["holidays"] = len(fetch_holiday_schedule())
+    time.sleep(1)
     results["per"] = fetch_per()
     time.sleep(1)
     results["eps"] = fetch_quarterly_eps()
@@ -248,9 +396,18 @@ def fetch_all():
     results["revenue"] = fetch_monthly_revenue()
     time.sleep(1)
     results["announcements"] = fetch_major_announcements()
+    time.sleep(1)
+    results["margin"] = fetch_margin_trading()
     print(f"\nResults: {json.dumps(results)}")
     return results
 
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--check-trading-day":
+        date_arg = sys.argv[2] if len(sys.argv) > 2 else None
+        trading = is_trading_day(date_arg)
+        target = date_arg or datetime.now().strftime("%Y-%m-%d")
+        print(f"{target}: {'TRADING DAY' if trading else 'NOT TRADING'}")
+        sys.exit(0 if trading else 1)
     fetch_all()
