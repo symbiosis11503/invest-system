@@ -10,6 +10,7 @@ import time
 import json
 import sqlite3
 import ssl
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -19,13 +20,45 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import DB_PATH, DATA_DIR
+from config import DB_PATH
+
+
+# 全局 Session，重用 TCP 連線
+_session = requests.Session()
+_session.headers.update({'User-Agent': 'Mozilla/5.0'})
+_session.verify = False
 
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def _get(url, params=None, retries=3, sleep_sec=1.0):
+    """帶 retry 的 GET 請求"""
+    for i in range(retries):
+        try:
+            resp = _session.get(url, params=params, timeout=30)
+            return resp
+        except Exception as e:
+            if i < retries - 1:
+                time.sleep(sleep_sec * (i + 1))
+            else:
+                raise
+
+
+def _post(url, data=None, retries=3, sleep_sec=1.0):
+    """帶 retry 的 POST 請求"""
+    for i in range(retries):
+        try:
+            resp = _session.post(url, data=data, timeout=30)
+            return resp
+        except Exception as e:
+            if i < retries - 1:
+                time.sleep(sleep_sec * (i + 1))
+            else:
+                raise
 
 
 # ============================================
@@ -41,7 +74,7 @@ def fetch_twse_daily(date_str):
     url = f'https://www.twse.com.tw/exchangeReport/MI_INDEX?response=json&date={date_str}&type=ALLBUT0999'
 
     try:
-        resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30, verify=False)
+        resp = _get(url)
         data = resp.json()
     except Exception as e:
         print(f'  [TWSE] {date_str} 抓取失敗: {e}')
@@ -53,9 +86,9 @@ def fetch_twse_daily(date_str):
     results = []
     for row in data['data9']:
         try:
-            symbol = row[0].strip()  # 證券代號
-            name = row[1].strip()    # 證券名稱
-            volume = int(row[2].replace(',', ''))  # 成交股數
+            symbol = row[0].strip()
+            name = row[1].strip()
+            volume = int(row[2].replace(',', ''))
             open_p = float(row[5].replace(',', '')) if row[5] != '--' else None
             high_p = float(row[6].replace(',', '')) if row[6] != '--' else None
             low_p = float(row[7].replace(',', '')) if row[7] != '--' else None
@@ -94,19 +127,18 @@ def fetch_twse_stock(symbol, start_date, end_date):
         url = f'https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date={date_str}&stockNo={symbol}'
 
         try:
-            resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30, verify=False)
+            resp = _get(url)
             data = resp.json()
         except Exception as e:
             print(f'  [TWSE] {symbol} {ym} 失敗: {e}')
             current = current.replace(day=1) + timedelta(days=32)
             current = current.replace(day=1)
-            time.sleep(3)
+            time.sleep(1)
             continue
 
         if data.get('stat') == 'OK' and 'data' in data:
             for row in data['data']:
                 try:
-                    # 日期格式: 115/01/02 (民國年)
                     parts = row[0].split('/')
                     y = int(parts[0]) + 1911
                     m = int(parts[1])
@@ -131,10 +163,9 @@ def fetch_twse_stock(symbol, start_date, end_date):
                 except (ValueError, IndexError):
                     continue
 
-        # 下個月
         current = current.replace(day=1) + timedelta(days=32)
         current = current.replace(day=1)
-        time.sleep(3)  # 避免被封鎖
+        time.sleep(1)  # 降低到 1 秒
 
     return results
 
@@ -170,20 +201,18 @@ def fetch_tpex_otc_stock(symbol, start_date, end_date):
         }
 
         try:
-            resp = requests.get(url, params=params,
-                                headers={'User-Agent': 'Mozilla/5.0'}, timeout=30, verify=False)
+            resp = _get(url, params=params)
             data = resp.json()
         except Exception as e:
             print(f'  [TPEx OTC] {symbol} {minguo_date} 失敗: {e}')
             current = current.replace(day=1) + timedelta(days=32)
             current = current.replace(day=1)
-            time.sleep(3)
+            time.sleep(1)
             continue
 
         if data.get('aaData'):
             for row in data['aaData']:
                 try:
-                    # 日期格式: 114/01/02 (民國年)
                     parts = row[0].split('/')
                     y = int(parts[0]) + 1911
                     m = int(parts[1])
@@ -209,10 +238,9 @@ def fetch_tpex_otc_stock(symbol, start_date, end_date):
                 except (ValueError, IndexError):
                     continue
 
-        # 下個月
         current = current.replace(day=1) + timedelta(days=32)
         current = current.replace(day=1)
-        time.sleep(3)
+        time.sleep(1)
 
     return results
 
@@ -242,20 +270,18 @@ def fetch_tpex_emerging(symbol, start_date, end_date):
         }
 
         try:
-            resp = requests.get(url, params=params,
-                                headers={'User-Agent': 'Mozilla/5.0'}, timeout=30, verify=False)
+            resp = _get(url, params=params)
             data = resp.json()
         except Exception as e:
             print(f'  [TPEx Emerging] {symbol} {minguo_date} 失敗: {e}')
             current = current.replace(day=1) + timedelta(days=32)
             current = current.replace(day=1)
-            time.sleep(3)
+            time.sleep(1)
             continue
 
         if data.get('aaData'):
             for row in data['aaData']:
                 try:
-                    # 日期格式: 114/01/02 (民國年)
                     parts = row[0].split('/')
                     y = int(parts[0]) + 1911
                     m = int(parts[1])
@@ -281,10 +307,9 @@ def fetch_tpex_emerging(symbol, start_date, end_date):
                 except (ValueError, IndexError):
                     continue
 
-        # 下個月
         current = current.replace(day=1) + timedelta(days=32)
         current = current.replace(day=1)
-        time.sleep(3)
+        time.sleep(1)
 
     return results
 
@@ -304,7 +329,6 @@ def fetch_taifex_futures(product_id, start_date, end_date):
     end = datetime.strptime(end_date, '%Y/%m/%d')
 
     while current <= end:
-        # 期交所每次最多查 1 個月
         month_end = (current.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
         if month_end > end:
             month_end = end
@@ -321,24 +345,22 @@ def fetch_taifex_futures(product_id, start_date, end_date):
         }
 
         try:
-            resp = requests.post(url, data=post_data,
-                                 headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
+            resp = _post(url, data=post_data)
             content = resp.content.decode('big5', errors='ignore')
         except Exception as e:
             print(f'  [TAIFEX] {product_id} {q_start}~{q_end} 失敗: {e}')
             current = month_end + timedelta(days=1)
-            time.sleep(3)
+            time.sleep(1)
             continue
 
-        # 解析 CSV（期交所回傳的是逗號分隔）
         lines = content.strip().split('\n')
-        for line in lines[1:]:  # 跳過 header
+        for line in lines[1:]:
             cols = [c.strip().strip('"') for c in line.split(',')]
             if len(cols) < 10:
                 continue
             try:
-                date_raw = cols[0].strip()  # YYYY/MM/DD
-                contract = cols[1].strip()  # 契約月份
+                date_raw = cols[0].strip()
+                contract = cols[1].strip()
                 open_p = float(cols[3]) if cols[3] else None
                 high_p = float(cols[4]) if cols[4] else None
                 low_p = float(cols[5]) if cols[5] else None
@@ -346,7 +368,6 @@ def fetch_taifex_futures(product_id, start_date, end_date):
                 volume = int(cols[7]) if cols[7] else 0
 
                 if open_p and close_p and volume > 0:
-                    # 轉日期格式
                     date = date_raw.replace('/', '-')
                     results.append({
                         'symbol': f'{product_id}_{contract}',
@@ -361,7 +382,7 @@ def fetch_taifex_futures(product_id, start_date, end_date):
                 continue
 
         current = month_end + timedelta(days=1)
-        time.sleep(3)
+        time.sleep(1)
 
     return results
 
@@ -395,30 +416,34 @@ def fetch_yfinance(symbol, period='1y'):
 
 
 # ============================================
-# 儲存到 SQLite
+# 儲存到 SQLite（批次 executemany）
 # ============================================
 
 def save_to_db(records, source='twse'):
-    """批次存入 market_data 表"""
+    """批次存入 market_data 表（使用 executemany 大幅提升速度）"""
     if not records:
         return 0
 
     conn = get_conn()
-    count = 0
-    for r in records:
-        try:
-            conn.execute(
-                """INSERT OR IGNORE INTO market_data
-                   (symbol, date, open, high, low, close, volume, source)
-                   VALUES (?,?,?,?,?,?,?,?)""",
-                (r['symbol'], r['date'], r['open'], r['high'],
-                 r['low'], r['close'], r['volume'], source)
-            )
-            count += 1
-        except Exception:
-            continue
-    conn.commit()
-    conn.close()
+    rows = [
+        (r['symbol'], r['date'], r['open'], r['high'],
+         r['low'], r['close'], r['volume'], source)
+        for r in records
+    ]
+    try:
+        conn.executemany(
+            """INSERT OR IGNORE INTO market_data
+               (symbol, date, open, high, low, close, volume, source)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            rows
+        )
+        count = conn.total_changes
+        conn.commit()
+    except Exception as e:
+        print(f'  [DB] 寫入失敗: {e}')
+        count = 0
+    finally:
+        conn.close()
     return count
 
 
@@ -483,6 +508,18 @@ def batch_download_yfinance(symbol, period='1y'):
     return records
 
 
+def _parallel_download(fn, symbols, max_workers=3, **kwargs):
+    """並行下載多個股票，最多 max_workers 個同時執行"""
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(fn, sym, **kwargs): sym for sym in symbols}
+        for future in as_completed(futures):
+            sym = futures[future]
+            try:
+                future.result()
+            except Exception as e:
+                print(f'  [並行] {sym} 失敗: {e}')
+
+
 # ============================================
 # CLI 入口
 # ============================================
@@ -498,37 +535,57 @@ if __name__ == '__main__':
     parser.add_argument('--start', default='2024-01-01', help='起始日 YYYY-MM-DD')
     parser.add_argument('--end', default=None, help='結束日 YYYY-MM-DD')
     parser.add_argument('--period', default='1y', help='yfinance 期間')
+    parser.add_argument('--workers', type=int, default=3, help='並行下載數（預設 3）')
     args = parser.parse_args()
 
+    end = args.end or datetime.now().strftime('%Y-%m-%d')
+
     if args.twse:
-        for sym in args.twse:
-            batch_download_twse_stock(sym, args.start, args.end)
+        _parallel_download(batch_download_twse_stock, args.twse,
+                           max_workers=args.workers, start=args.start, end=end)
 
     if args.otc:
-        for sym in args.otc:
-            batch_download_tpex_stock(sym, args.start, args.end)
+        _parallel_download(batch_download_tpex_stock, args.otc,
+                           max_workers=args.workers, start=args.start, end=end)
 
     if args.emerging:
-        for sym in args.emerging:
-            batch_download_tpex_emerging(sym, args.start, args.end)
+        _parallel_download(batch_download_tpex_emerging, args.emerging,
+                           max_workers=args.workers, start=args.start, end=end)
 
     if args.taifex:
         start_taifex = args.start.replace('-', '/')
-        end_taifex = args.end.replace('-', '/') if args.end else None
-        for prod in args.taifex:
-            batch_download_taifex(prod, start_taifex, end_taifex)
+        end_taifex = end.replace('-', '/')
+        _parallel_download(batch_download_taifex, args.taifex,
+                           max_workers=args.workers, start=start_taifex, end=end_taifex)
 
     if args.yf:
-        for sym in args.yf:
-            batch_download_yfinance(sym, args.period)
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            futures = {executor.submit(batch_download_yfinance, sym, args.period): sym
+                       for sym in args.yf}
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    print(f'  [yfinance 並行] 失敗: {e}')
 
     if not (args.twse or args.otc or args.emerging or args.taifex or args.yf):
-        # 預設下載：台指期 + 台積電 + 微型黃金
         print('=== 預設批次下載 ===')
-        batch_download_taifex('TX', '2024/01/01')
-        batch_download_taifex('MTX', '2024/01/01')
+        # 期貨並行
+        _parallel_download(batch_download_taifex, ['TX', 'MTX'],
+                           max_workers=2,
+                           start='2024/01/01', end=datetime.now().strftime('%Y/%m/%d'))
+        # 台股
         batch_download_twse_stock('2330', '2024-01-01')
-        batch_download_yfinance('GC=F', '2y')
-        batch_download_yfinance('MGC=F', '1y')
-        batch_download_yfinance('BTC-USD', '1y')
+        # yfinance 並行
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [
+                executor.submit(batch_download_yfinance, 'GC=F', '2y'),
+                executor.submit(batch_download_yfinance, 'MGC=F', '1y'),
+                executor.submit(batch_download_yfinance, 'BTC-USD', '1y'),
+            ]
+            for f in as_completed(futures):
+                try:
+                    f.result()
+                except Exception as e:
+                    print(f'  [yfinance 並行] 失敗: {e}')
         print('\n=== 下載完成 ===')

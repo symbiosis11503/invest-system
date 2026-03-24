@@ -4,7 +4,7 @@ MACD 線上穿信號線 → 買入
 MACD 線下穿信號線 → 賣出
 """
 import backtrader as bt
-from strategies.base import BaseStrategy
+from base import BaseStrategy
 
 
 class MACDStrategy(BaseStrategy):

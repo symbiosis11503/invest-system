@@ -4,7 +4,7 @@
 短均線下穿長均線 → 賣出
 """
 import backtrader as bt
-from strategies.base import BaseStrategy
+from base import BaseStrategy
 
 
 class MACrossStrategy(BaseStrategy):

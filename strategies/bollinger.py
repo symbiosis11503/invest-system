@@ -4,7 +4,7 @@
 價格突破上軌 → 賣出
 """
 import backtrader as bt
-from strategies.base import BaseStrategy
+from base import BaseStrategy
 
 
 class BollingerStrategy(BaseStrategy):

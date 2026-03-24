@@ -6,7 +6,7 @@
 - 可設定門檻（例如至少 3/5 看多才買）
 """
 import backtrader as bt
-from strategies.base import BaseStrategy
+from base import BaseStrategy
 
 
 class EnsembleStrategy(BaseStrategy):

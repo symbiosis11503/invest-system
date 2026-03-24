@@ -4,7 +4,7 @@ RSI < 超賣線 → 買入
 RSI > 超買線 → 賣出
 """
 import backtrader as bt
-from strategies.base import BaseStrategy
+from base import BaseStrategy
 
 
 class RSIStrategy(BaseStrategy):

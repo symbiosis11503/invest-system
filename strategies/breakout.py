@@ -4,7 +4,7 @@
 價格跌破 M 日最低 → 賣出
 """
 import backtrader as bt
-from strategies.base import BaseStrategy
+from base import BaseStrategy
 
 
 class BreakoutStrategy(BaseStrategy):
