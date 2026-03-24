@@ -1912,6 +1912,70 @@ def api_broker_trading():
     return jsonify(result)
 
 
+@app.route("/api/margin/<symbol>")
+def api_margin(symbol):
+    """融資融券趨勢 — 近 N 日"""
+    days = request.args.get('days', 30, type=int)
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT date, margin_buy, margin_sell, margin_balance,
+               short_sell, short_buy, short_balance
+        FROM tw_margin
+        WHERE symbol = ? AND date >= date('now', ? || ' days')
+        ORDER BY date DESC
+    """, (symbol, f"-{days}")).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/margin-alert")
+def api_margin_alert():
+    """融資融券異動警示 — 融資增減 > 10% 或融券暴增"""
+    conn = get_conn()
+    rows = conn.execute("""
+        WITH latest AS (
+            SELECT symbol, margin_balance, short_balance, date,
+                   ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY date DESC) as rn
+            FROM tw_margin
+        ),
+        prev AS (
+            SELECT symbol, margin_balance as prev_margin, short_balance as prev_short
+            FROM latest WHERE rn = 2
+        )
+        SELECT l.symbol, n.name as name,
+               l.margin_balance, p.prev_margin,
+               l.short_balance, p.prev_short,
+               CASE WHEN p.prev_margin > 0
+                    THEN ROUND((l.margin_balance - p.prev_margin) * 100.0 / p.prev_margin, 2)
+                    ELSE 0 END as margin_change_pct,
+               CASE WHEN p.prev_short > 0
+                    THEN ROUND((l.short_balance - p.prev_short) * 100.0 / p.prev_short, 2)
+                    ELSE 0 END as short_change_pct
+        FROM latest l
+        LEFT JOIN prev p ON l.symbol = p.symbol
+        LEFT JOIN symbol_names n ON l.symbol = n.symbol
+        WHERE l.rn = 1 AND p.prev_margin IS NOT NULL
+        AND (ABS(l.margin_balance - p.prev_margin) * 100.0 / MAX(p.prev_margin, 1) > 10
+             OR ABS(l.short_balance - p.prev_short) > 500)
+        ORDER BY ABS(margin_change_pct) DESC
+        LIMIT 50
+    """).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/trading-day")
+def api_trading_day():
+    """查詢是否為交易日"""
+    from data.twse_fetcher import is_trading_day
+    date_str = request.args.get('date')
+    trading = is_trading_day(date_str)
+    return jsonify({
+        "date": date_str or datetime.now().strftime("%Y-%m-%d"),
+        "is_trading_day": trading
+    })
+
+
 if __name__ == "__main__":
     print("投資系統 Web App 啟動中...")
     print("http://localhost:18900")
