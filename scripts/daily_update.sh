@@ -33,7 +33,8 @@ OK_STEPS=0
 $VENV -c "from data.twse_fetcher import fetch_holiday_schedule; fetch_holiday_schedule()" >> "$LOG" 2>&1
 
 # 用 TWSE 休市日曆判斷是否為交易日（涵蓋週末 + 國定假日）
-IS_TRADING=$($VENV data/twse_fetcher.py --check-trading-day 2>/dev/null && echo true || echo false)
+# 注意：必須丟棄 stdout，只看 exit code（0=交易日，1=非交易日）
+$VENV data/twse_fetcher.py --check-trading-day > /dev/null 2>&1 && IS_TRADING=true || IS_TRADING=false
 
 log "========== DAILY UPDATE START (trading_day=$IS_TRADING) =========="
 
@@ -270,6 +271,29 @@ print(f'Broker trading: {ok}/{len(stocks)} stocks fetched')
         log "ERROR: Broker trading update failed"
         tg_notify "⚠️ 投資系統: 分點主力更新失敗"
     fi
+fi
+
+# 數據完整性驗證（交易日）
+if [ "$IS_TRADING" = "true" ]; then
+    log "Running data integrity check..."
+    $VENV -c "
+import sqlite3, datetime
+conn = sqlite3.connect('db/trades.db')
+today = datetime.date.today().strftime('%Y-%m-%d')
+checks = []
+# 台股行情
+n = conn.execute('SELECT COUNT(*) FROM market_data WHERE date=?', (today,)).fetchone()[0]
+checks.append(f'行情:{n}筆')
+if n < 100: print(f'⚠️ 台股行情偏少: {n} (預期 1000+)')
+# 新聞
+n = conn.execute(\"SELECT COUNT(*) FROM news_intelligence WHERE published_at >= ?\", (today,)).fetchone()[0]
+checks.append(f'新聞:{n}筆')
+# 法人
+n = conn.execute('SELECT COUNT(*) FROM tw_institutional WHERE date=?', (today,)).fetchone()[0]
+checks.append(f'法人:{n}筆')
+conn.close()
+print(f'[驗證] {\" | \".join(checks)}')
+" >> "$LOG" 2>&1
 fi
 
 log "========== DAILY UPDATE DONE ($OK_STEPS/$TOTAL_STEPS OK) =========="

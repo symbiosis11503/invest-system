@@ -9,8 +9,11 @@ mkdir -p "$INVEST_DIR/logs"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG"; }
 
-TG_BOT_TOKEN="8585765797:AAGYUDdSSTgOmz2TS3d9zsjk4F7T_VdWzao"
-TG_CHAT_ID="6927318445"
+if [ -f "$INVEST_DIR/.env" ]; then
+    export $(grep -v '^#' "$INVEST_DIR/.env" | xargs)
+fi
+TG_BOT_TOKEN="${TG_BOT_TOKEN:-}"
+TG_CHAT_ID="${TG_CHAT_ID:-}"
 
 tg_notify() {
     local msg="$1"

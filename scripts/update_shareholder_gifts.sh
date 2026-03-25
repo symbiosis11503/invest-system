@@ -8,6 +8,7 @@ VENV="$INVEST_DIR/.venv/bin/python"
 LOG="$INVEST_DIR/logs/shareholder_gifts.log"
 
 mkdir -p "$INVEST_DIR/logs"
+cd "$INVEST_DIR" || exit 1
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG"; }
 
@@ -25,10 +26,11 @@ if [ $? -eq 0 ]; then
 else
     log "UPDATE FAILED"
     # Telegram 通知
-    TG_BOT_TOKEN="8585765797:AAGYUDdSSTgOmz2TS3d9zsjk4F7T_VdWzao"
-    TG_CHAT_ID="6927318445"
+    if [ -f "$INVEST_DIR/.env" ]; then
+        export $(grep -v '^#' "$INVEST_DIR/.env" | xargs)
+    fi
     curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
-        -d chat_id="$TG_CHAT_ID" \
+        -d chat_id="${TG_CHAT_ID}" \
         -d text="⚠️ 投資系統: 股東紀念品更新失敗" > /dev/null 2>&1
 fi
 
