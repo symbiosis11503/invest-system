@@ -442,8 +442,8 @@ def index_old():
                         法人動向 ({latest_date})：{items}
                     </div>
                 </div></a>"""
-    except Exception:
-        pass
+    except Exception as e:
+        app.logger.warning(f"儀表板法人動向載入失敗: {e}")
 
     conn.close()
     return page("儀表板", mood_html + chip_html + tg_html + bt_html + stat_html + trade_html)
