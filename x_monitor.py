@@ -408,7 +408,10 @@ def generate_summary(posts: list[dict]) -> str | None:
         return summary
 
     except Exception as e:
-        print(f'[!] Gemini 摘要錯誤: {e}')
+        err_msg = str(e)
+        if 'key=' in err_msg:
+            err_msg = err_msg.split('key=')[0] + 'key=***'
+        print(f'[!] Gemini 摘要錯誤: {err_msg}')
         return None
 
 

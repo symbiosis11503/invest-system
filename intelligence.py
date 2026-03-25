@@ -319,7 +319,10 @@ def _gemini_analyze(title: str, summary: str) -> dict | None:
         print(f"  [!] Gemini JSON 解析失敗: {content[:100]}")
         return None
     except Exception as e:
-        print(f"  [!] Gemini API 錯誤: {e}")
+        err_msg = str(e)
+        if 'key=' in err_msg:
+            err_msg = err_msg.split('key=')[0] + 'key=***'
+        print(f"  [!] Gemini API 錯誤: {err_msg}")
         return None
 
 

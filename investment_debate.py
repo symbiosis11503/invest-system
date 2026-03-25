@@ -106,7 +106,10 @@ def _call_gemini(system_prompt, user_prompt):
         except requests.exceptions.HTTPError:
             continue
         except Exception as e:
-            return f"[API 錯誤: {e}]"
+            err_msg = str(e)
+            if 'key=' in err_msg:
+                err_msg = err_msg.split('key=')[0] + 'key=***'
+            return f"[API 錯誤: {err_msg}]"
     return "[所有 API key 都被限流，請稍後再試]"
 
 

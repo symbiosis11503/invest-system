@@ -183,8 +183,15 @@ def fetch_jin10_calendar(target_date: str) -> list:
 
 INVESTING_CALENDAR_URL = "https://www.investing.com/economic-calendar/"
 
-def fetch_investing_calendar(target_date: str) -> list:
-    """從 Investing.com 抓取財經日曆 (備用)"""
+def fetch_investing_calendar(date_from: str, date_to: Optional[str] = None) -> list:
+    """從 Investing.com 抓取財經日曆（支援日期範圍）
+
+    API 總是回傳整週數據，所以一次抓取日期範圍更高效。
+    從 HTML 的 date header rows 解析每個事件的真實日期。
+    """
+    if date_to is None:
+        date_to = date_from
+
     events = []
 
     investing_country_map = {
@@ -196,6 +203,13 @@ def fetch_investing_calendar(target_date: str) -> list:
         "New Zealand": "NZ", "Brazil": "BR", "Mexico": "MX",
         "Turkey": "TR", "Russia": "RU", "South Africa": "ZA",
         "Hong Kong": "HK", "Singapore": "SG",
+    }
+
+    # Month name → number mapping for Investing.com date headers
+    month_map = {
+        "January": "01", "February": "02", "March": "03", "April": "04",
+        "May": "05", "June": "06", "July": "07", "August": "08",
+        "September": "09", "October": "10", "November": "11", "December": "12",
     }
 
     try:
@@ -210,8 +224,8 @@ def fetch_investing_calendar(target_date: str) -> list:
         resp = requests.get(
             "https://www.investing.com/economic-calendar/Service/getCalendarFilteredData",
             params={
-                "dateFrom": target_date,
-                "dateTo": target_date,
+                "dateFrom": date_from,
+                "dateTo": date_to,
                 "timeZone": 88,  # UTC+8
                 "timeFilter": "timeRemain",
                 "currentTab": "custom",
@@ -222,6 +236,7 @@ def fetch_investing_calendar(target_date: str) -> list:
         )
 
         if resp.status_code != 200:
+            logger.warning(f"Investing.com HTTP {resp.status_code}")
             return events
 
         result = resp.json()
@@ -230,18 +245,35 @@ def fetch_investing_calendar(target_date: str) -> list:
             return events
 
         soup = BeautifulSoup(html, "html.parser")
-        rows = soup.find_all("tr", class_="js-event-item")
 
-        for row in rows:
+        # Parse date from theDay header rows and track current date
+        current_date = date_from  # fallback
+        import re
+
+        for row in soup.find_all("tr"):
+            # Check if this is a date header row
+            day_cell = row.find("td", class_="theDay")
+            if day_cell:
+                date_text = day_cell.get_text(strip=True)
+                # Parse "Tuesday, March 25, 2026" format
+                match = re.search(r"(\w+)\s+(\d+),?\s*(\d{4})", date_text)
+                if match:
+                    month_name, day, year = match.groups()
+                    month_num = month_map.get(month_name, "01")
+                    current_date = f"{year}-{month_num}-{day.zfill(2)}"
+                continue
+
+            # Check if this is an event row
+            if "js-event-item" not in (row.get("class") or []):
+                continue
+
             time_cell = row.find("td", class_="time")
             event_time = time_cell.get_text(strip=True) if time_cell else ""
 
-            # Country from flag span title
             flag_span = row.find("span", class_="ceFlags")
             country_text = flag_span.get("title", "") if flag_span else ""
             country_code = investing_country_map.get(country_text, "")
 
-            # Event name from <a> inside event td
             event_cell = row.find("td", class_="event")
             if event_cell:
                 event_a = event_cell.find("a")
@@ -249,7 +281,6 @@ def fetch_investing_calendar(target_date: str) -> list:
             else:
                 event_name = ""
 
-            # Importance from sentiment td bull icons
             sentiment_td = row.find("td", class_="sentiment")
             if sentiment_td:
                 bull_icons = sentiment_td.find_all("i", class_="grayFullBullishIcon")
@@ -264,7 +295,6 @@ def fetch_investing_calendar(target_date: str) -> list:
             if not event_name:
                 continue
 
-            # Map star_count: 3=high, 2=medium, 1=low, 0=low
             if star_count >= 3:
                 imp = "high"
             elif star_count >= 2:
@@ -273,7 +303,7 @@ def fetch_investing_calendar(target_date: str) -> list:
                 imp = "low"
 
             events.append({
-                "event_date": target_date,
+                "event_date": current_date,
                 "event_time": event_time,
                 "country": country_code,
                 "country_name": COUNTRY_NAME_ZH.get(country_code, country_text),
@@ -320,8 +350,35 @@ RECURRING_EVENTS = [
 
 # ── 主流程 ──────────────────────────────────────────────
 
+def _store_events(conn, events: list) -> tuple:
+    """Store events to DB, returns (stored_count, errors)"""
+    stored = 0
+    errors = []
+    for ev in events:
+        try:
+            conn.execute("""
+                INSERT OR REPLACE INTO economic_calendar
+                (event_date, event_time, country, country_name, event_name,
+                 importance, previous, forecast, actual, unit, source, raw_id, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+            """, (
+                ev["event_date"], ev["event_time"], ev["country"],
+                ev["country_name"], ev["event_name"], ev["importance"],
+                ev["previous"], ev["forecast"], ev["actual"],
+                ev["unit"], ev["source"], ev["raw_id"],
+            ))
+            stored += 1
+        except Exception as e:
+            errors.append(str(e))
+    return stored, errors
+
+
 def fetch_and_store(days: int = 7) -> dict:
     """抓取未來 N 天的財經日曆並存入 DB
+
+    策略：
+    1. 先嘗試 Jin10 逐日抓取
+    2. 若 Jin10 無資料，用 Investing.com 一次抓取整個日期範圍（避免重複）
 
     Returns:
         dict with stats
@@ -335,40 +392,33 @@ def fetch_and_store(days: int = 7) -> dict:
     sources_used = set()
 
     today = datetime.now()
+    date_from = today.strftime("%Y-%m-%d")
+    date_to = (today + timedelta(days=days - 1)).strftime("%Y-%m-%d")
 
+    # Phase 1: 嘗試 Jin10 逐日
+    jin10_dates_covered = set()
     for i in range(days):
-        target = today + timedelta(days=i)
-        target_date = target.strftime("%Y-%m-%d")
-
-        # 嘗試 Jin10
+        target_date = (today + timedelta(days=i)).strftime("%Y-%m-%d")
         events = fetch_jin10_calendar(target_date)
         if events:
             sources_used.add("jin10")
+            jin10_dates_covered.add(target_date)
+            total_fetched += len(events)
+            stored, errs = _store_events(conn, events)
+            total_stored += stored
+            errors.extend(errs)
 
-        # 如果 Jin10 無資料，嘗試 Investing.com
-        if not events:
-            events = fetch_investing_calendar(target_date)
-            if events:
-                sources_used.add("investing")
-
-        total_fetched += len(events)
-
-        for ev in events:
-            try:
-                conn.execute("""
-                    INSERT OR REPLACE INTO economic_calendar
-                    (event_date, event_time, country, country_name, event_name,
-                     importance, previous, forecast, actual, unit, source, raw_id, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
-                """, (
-                    ev["event_date"], ev["event_time"], ev["country"],
-                    ev["country_name"], ev["event_name"], ev["importance"],
-                    ev["previous"], ev["forecast"], ev["actual"],
-                    ev["unit"], ev["source"], ev["raw_id"],
-                ))
-                total_stored += 1
-            except Exception as e:
-                errors.append(str(e))
+    # Phase 2: Investing.com 補齊（一次查詢整個範圍，避免重複）
+    if len(jin10_dates_covered) < days:
+        events = fetch_investing_calendar(date_from, date_to)
+        if events:
+            sources_used.add("investing")
+            # 只存 Jin10 未覆蓋的日期
+            filtered = [e for e in events if e["event_date"] not in jin10_dates_covered]
+            total_fetched += len(filtered)
+            stored, errs = _store_events(conn, filtered)
+            total_stored += stored
+            errors.extend(errs)
 
     conn.commit()
     conn.close()

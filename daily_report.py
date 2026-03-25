@@ -132,7 +132,10 @@ def _call_gemini(prompt: str) -> str | None:
         resp.raise_for_status()
         return resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
     except Exception as e:
-        print(f"  [!] Gemini 市場總結失敗: {e}")
+        err_msg = str(e)
+        if 'key=' in err_msg:
+            err_msg = err_msg.split('key=')[0] + 'key=***'
+        print(f"  [!] Gemini 市場總結失敗: {err_msg}")
         return None
 
 
