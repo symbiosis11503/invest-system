@@ -86,8 +86,8 @@ def _call_gemini(system_prompt, user_prompt):
         _gemini_key_index += 1
         try:
             resp = requests.post(
-                f"{GEMINI_URL}?key={api_key}",
-                headers={"Content-Type": "application/json"},
+                GEMINI_URL,
+                headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
                 json={
                     "contents": [{"parts": [{"text": user_prompt}]}],
                     "systemInstruction": {"parts": [{"text": system_prompt}]},
