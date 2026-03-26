@@ -545,6 +545,9 @@ def fetch_qfiis_cat():
 
 def fetch_yearly_trade():
     """從 TWSE OpenAPI 抓年度成交資訊（FMNPTK_ALL — 年高低點/均價）"""
+    def to_float(v):
+        return float(str(v).replace(",", "")) if v and str(v).strip() else None
+
     try:
         resp = requests.get(API["yearly_trade"], timeout=30, verify=False, headers=HEADERS)
         data = resp.json()
@@ -581,9 +584,6 @@ def fetch_yearly_trade():
                 roc_year = int(d.get("Year", "0"))
                 year = roc_year + 1911
 
-                def to_float(v):
-                    return float(str(v).replace(",", "")) if v and str(v).strip() else None
-
                 conn.execute("""
                     INSERT OR REPLACE INTO tw_yearly_trade
                     (year, symbol, name, trade_volume, trade_value, transactions,
@@ -615,6 +615,9 @@ def fetch_yearly_trade():
 
 def fetch_ex_dividend():
     """從 TWSE OpenAPI 抓除權除息預告（TWT48U_ALL）"""
+    def to_float(v):
+        return float(str(v).replace(",", "")) if v and str(v).strip() else 0
+
     try:
         resp = requests.get(API["ex_dividend"], timeout=15, verify=False, headers=HEADERS)
         data = resp.json()
@@ -645,9 +648,6 @@ def fetch_ex_dividend():
                     date_str = f"{year}-{roc_date[3:5]}-{roc_date[5:7]}"
                 else:
                     continue
-
-                def to_float(v):
-                    return float(str(v).replace(",", "")) if v and str(v).strip() else 0
 
                 conn.execute("""
                     INSERT OR REPLACE INTO tw_ex_dividend (date, symbol, name, ex_type, stock_dividend_ratio, cash_dividend)
