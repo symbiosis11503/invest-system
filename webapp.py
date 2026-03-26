@@ -1259,6 +1259,7 @@ def simulator():
 
 
 @app.route("/api/sim/account")
+@require_local_or_key
 def api_sim_account():
     conn = get_conn()
     acct = conn.execute("SELECT * FROM sim_account WHERE id=1").fetchone()
@@ -1281,6 +1282,7 @@ def api_sim_account():
 
 
 @app.route("/api/sim/portfolio")
+@require_local_or_key
 def api_sim_portfolio():
     conn = get_conn()
     rows = conn.execute("SELECT * FROM sim_portfolio WHERE quantity > 0 ORDER BY symbol").fetchall()
@@ -1289,6 +1291,7 @@ def api_sim_portfolio():
 
 
 @app.route("/api/sim/orders")
+@require_local_or_key
 def api_sim_orders():
     conn = get_conn()
     rows = conn.execute("SELECT * FROM sim_orders ORDER BY created_at DESC LIMIT 100").fetchall()
@@ -1422,6 +1425,7 @@ def api_sim_fill(order_id):
 
 
 @app.route("/api/sim/signals")
+@require_local_or_key
 def api_sim_signals():
     """取得最新策略信號（從 backtest_results 讀取最新一筆每個策略）"""
     conn = get_conn()
