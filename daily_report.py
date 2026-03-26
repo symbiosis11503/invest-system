@@ -124,8 +124,8 @@ def _call_gemini(prompt: str) -> str | None:
         return None
     try:
         resp = requests.post(
-            f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}',
-            headers={'Content-Type': 'application/json'},
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+            headers={'Content-Type': 'application/json', 'x-goog-api-key': api_key},
             json={'contents': [{'parts': [{'text': prompt}]}]},
             timeout=30,
         )

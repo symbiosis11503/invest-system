@@ -282,8 +282,8 @@ def _gemini_analyze(title: str, summary: str) -> dict | None:
 
     try:
         resp = requests.post(
-            f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}',
-            headers={'Content-Type': 'application/json'},
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+            headers={'Content-Type': 'application/json', 'x-goog-api-key': api_key},
             json={
                 'contents': [{'parts': [{'text': prompt}]}],
                 'generationConfig': {'maxOutputTokens': 500, 'thinkingConfig': {'thinkingBudget': 0}},
