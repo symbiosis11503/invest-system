@@ -15,7 +15,13 @@ DB_PATH = os.path.join(BASE_DIR, "db/trades.db")
 from config import load_env
 load_env()
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), static_folder=os.path.join(BASE_DIR, 'static'))
+app.secret_key = os.environ.get('FLASK_SECRET', os.urandom(32).hex())
 _START_TIME = time.time()
+
+# Tunnel 認證（暫時停用 — 老闆指示短期不對外，先不設密碼）
+# @app.before_request
+# def tunnel_auth():
+#     pass
 
 
 @app.route("/api/health")
