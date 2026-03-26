@@ -7,6 +7,7 @@
 - 可推播到 Telegram
 """
 import json
+import logging
 import os
 import sqlite3
 import traceback
@@ -309,7 +310,8 @@ def get_institutional_summary():
         """, (latest,)).fetchall()
         conn.close()
         return [dict(r) | {'date': latest} for r in rows]
-    except Exception:
+    except Exception as e:
+        logging.debug("get_institutional_summary fail: %s", e)
         conn.close()
         return []
 
@@ -342,7 +344,8 @@ def get_broker_summary():
         """, (latest,)).fetchall()
         conn.close()
         return [dict(r) | {'date': latest} for r in rows]
-    except Exception:
+    except Exception as e:
+        logging.debug("get_broker_summary fail: %s", e)
         conn.close()
         return []
 
@@ -388,7 +391,8 @@ def generate_report():
             report.append("─" * 35)
             for line in ai_summary.strip().split('\n'):
                 report.append(line)
-    except Exception:
+    except Exception as e:
+        logging.debug("AI market summary fail: %s", e)
         traceback.print_exc()
         report.append("\n🤖 AI 市場總結：生成失敗")
 
@@ -408,7 +412,8 @@ def generate_report():
             # VIX 燈號
             for sym_data in bubble_indicators:
                 report.append(f"• {sym_data}")
-    except Exception:
+    except Exception as e:
+        logging.debug("bubble indicators fail: %s", e)
         pass
 
     # 市場行情

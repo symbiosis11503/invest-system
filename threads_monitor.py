@@ -1,6 +1,7 @@
 """Threads 社群貼文監控 + AI 情感分析"""
 import argparse
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -82,7 +83,8 @@ def init_threads_db():
                 "INSERT OR IGNORE INTO threads_accounts (username, added_at) VALUES (?, ?)",
                 (acct, datetime.now().isoformat())
             )
-        except Exception:
+        except Exception as e:
+            logging.debug("threads_monitor insert skip: %s", e)
             pass
     conn.commit()
     conn.close()

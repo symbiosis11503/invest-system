@@ -8,6 +8,7 @@
     python broker_trading.py 2330 --period 3 # 近10日
     python broker_trading.py 2330 2317 --period 2
 """
+import logging
 import re
 import sqlite3
 import time
@@ -217,7 +218,8 @@ def _save_to_db(result):
                   item['broker_id'], item['broker_name'],
                   item['buy_qty'], item['sell_qty'], item['net_qty'], item['pct']))
             count += 1
-        except Exception:
+        except Exception as e:
+            logging.warning("broker_trading buy insert fail: %s", e)
             continue
 
     for rank, item in enumerate(result['sell_list'], 1):
@@ -231,7 +233,8 @@ def _save_to_db(result):
                   item['broker_id'], item['broker_name'],
                   item['buy_qty'], item['sell_qty'], item['net_qty'], item['pct']))
             count += 1
-        except Exception:
+        except Exception as e:
+            logging.warning("broker_trading sell insert fail: %s", e)
             continue
 
     conn.commit()

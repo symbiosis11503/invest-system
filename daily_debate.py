@@ -12,6 +12,7 @@
   python daily_debate.py --tg         # 結果推送 TG
 """
 import json
+import logging
 import os
 import sys
 import sqlite3
@@ -73,7 +74,8 @@ def send_to_tg(text, chat_id=None):
         from push_notify import send_push
         title_line = text.split('\n')[0][:80]
         send_push(title_line, text[:200], url="/debate", tag="debate")
-    except Exception:
+    except Exception as e:
+        logging.debug("daily_debate push_notify fail: %s", e)
         pass
 
 

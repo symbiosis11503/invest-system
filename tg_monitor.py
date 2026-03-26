@@ -10,6 +10,7 @@ Telegram Userbot 群組監聽模組
 
 import argparse
 import asyncio
+import logging
 import sqlite3
 from datetime import datetime, timezone
 
@@ -90,7 +91,8 @@ def analyze_message(text: str, group_name: str = '', msg_id: int = 0) -> dict | 
             )
             conn.commit()
         conn.close()
-    except Exception:
+    except Exception as e:
+        logging.debug("tg_monitor save_message fail: %s", e)
         pass
 
     return None

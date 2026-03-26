@@ -6,6 +6,7 @@ FinMind API 整合模組
 免費額度: 未註冊 300次/hr, 註冊 600次/hr
 """
 import json
+import logging
 import sqlite3
 import time
 from datetime import datetime, timedelta
@@ -166,7 +167,8 @@ def fetch_institutional(symbol, start_date, end_date=None):
                   d['dealer_buy'], d['dealer_sell'], d['dealer_net'],
                   d['total_net']))
             count += 1
-        except Exception:
+        except Exception as e:
+            logging.debug("finmind institutional insert skip: %s", e)
             continue
     conn.commit()
     conn.close()
@@ -210,7 +212,8 @@ def fetch_margin(symbol, start_date, end_date=None):
                 int(r.get('ShortSaleTodayBalance', 0)),
             ))
             count += 1
-        except Exception:
+        except Exception as e:
+            logging.debug("finmind margin insert skip: %s", e)
             continue
     conn.commit()
     conn.close()
@@ -250,7 +253,8 @@ def fetch_revenue(symbol, start_date, end_date=None):
                 float(r.get('revenue_month_growth_rate', 0)),
             ))
             count += 1
-        except Exception:
+        except Exception as e:
+            logging.debug("finmind revenue insert skip: %s", e)
             continue
     conn.commit()
     conn.close()
@@ -290,7 +294,8 @@ def fetch_per(symbol, start_date, end_date=None):
                 float(r.get('dividend_yield', 0)) if r.get('dividend_yield') else None,
             ))
             count += 1
-        except Exception:
+        except Exception as e:
+            logging.debug("finmind per insert skip: %s", e)
             continue
     conn.commit()
     conn.close()
