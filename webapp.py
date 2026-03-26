@@ -17,11 +17,21 @@ load_env()
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'), static_folder=os.path.join(BASE_DIR, 'static'))
 app.secret_key = os.environ.get('FLASK_SECRET', os.urandom(32).hex())
 _START_TIME = time.time()
+_WRITE_API_KEY = os.environ.get('INVEST_WRITE_KEY', '')
 
-# Tunnel 認證（暫時停用 — 老闆指示短期不對外，先不設密碼）
-# @app.before_request
-# def tunnel_auth():
-#     pass
+
+def require_local_or_key(f):
+    """寫入端點保護：僅允許 localhost 或帶有效 API key 的請求"""
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        remote = request.remote_addr or ''
+        if remote in ('127.0.0.1', '::1', 'localhost'):
+            return f(*args, **kwargs)
+        auth = request.headers.get('Authorization', '')
+        if _WRITE_API_KEY and auth == f'Bearer {_WRITE_API_KEY}':
+            return f(*args, **kwargs)
+        return jsonify({"error": "unauthorized"}), 403
+    return wrapper
 
 
 @app.route("/api/health")
@@ -1287,6 +1297,7 @@ def api_sim_orders():
 
 
 @app.route("/api/sim/order", methods=["POST"])
+@require_local_or_key
 def api_sim_place_order():
     data = request.get_json(force=True)
     symbol = data.get("symbol", "").strip()
@@ -1316,6 +1327,7 @@ def api_sim_place_order():
 
 
 @app.route("/api/sim/cancel/<int:order_id>", methods=["POST"])
+@require_local_or_key
 def api_sim_cancel(order_id):
     conn = get_conn()
     order = conn.execute("SELECT * FROM sim_orders WHERE id=?", (order_id,)).fetchone()
@@ -1332,6 +1344,7 @@ def api_sim_cancel(order_id):
 
 
 @app.route("/api/sim/fill/<int:order_id>", methods=["POST"])
+@require_local_or_key
 def api_sim_fill(order_id):
     """模擬成交 — 更新持倉與帳戶"""
     data = request.get_json(force=True) if request.is_json else {}
@@ -1855,6 +1868,7 @@ def api_economic_calendar_today():
 
 
 @app.route("/api/economic-calendar/refresh", methods=["POST"])
+@require_local_or_key
 def api_economic_calendar_refresh():
     """手動觸發抓取財經日曆"""
     from economic_calendar import fetch_and_store
