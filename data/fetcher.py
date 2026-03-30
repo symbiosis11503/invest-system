@@ -8,6 +8,7 @@
 """
 import time
 import json
+import logging
 import sqlite3
 import ssl
 from datetime import datetime, timedelta
@@ -424,7 +425,8 @@ def save_to_db(records, source='twse'):
                  r['low'], r['close'], r['volume'], source)
             )
             count += 1
-        except Exception:
+        except Exception as e:
+            logging.debug(f"market_data insert skip: {e}")
             continue
     conn.commit()
     conn.close()

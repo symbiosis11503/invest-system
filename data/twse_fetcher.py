@@ -1,6 +1,7 @@
 """TWSE OpenAPI 公開資料抓取器 — PER/EPS/月營收/重大公告/融資融券/借券/月均價/外資類股/除權息"""
 import requests
 import json
+import logging
 import sqlite3
 import re
 import time
@@ -230,7 +231,8 @@ def fetch_major_announcements():
                     VALUES (?, ?, ?, ?)
                 """, (symbol, date, title, d.get("content", "")))
                 count += 1
-            except Exception:
+            except Exception as e:
+                logging.debug(f"announcement insert skip: {e}")
                 continue
 
         conn.commit()
