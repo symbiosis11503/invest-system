@@ -39,25 +39,38 @@ $VENV data/twse_fetcher.py --check-trading-day > /dev/null 2>&1 && IS_TRADING=tr
 log "========== DAILY UPDATE START (trading_day=$IS_TRADING) =========="
 
 if [ "$IS_TRADING" = "true" ]; then
-    # 1. 台股行情 (yfinance 增量)
+    # 1. 台股行情 (TWSE + 重試機制)
     TOTAL_STEPS=$((TOTAL_STEPS + 1))
     log "Updating market data..."
-    $VENV -c "
+    TWSE_OK=false
+    for RETRY in 1 2 3; do
+        TWSE_COUNT=$($VENV -c "
 from data.fetcher import fetch_twse_daily, save_to_db
 import datetime
 today = datetime.date.today().strftime('%Y%m%d')
 data = fetch_twse_daily(today)
 if data:
     saved = save_to_db(data, source='twse')
-    print(f'TWSE daily: {len(data)} rows fetched, {saved} saved')
+    print(len(data))
 else:
-    print('No TWSE data (market closed?)')
-" >> "$LOG" 2>&1
-    if [ $? -eq 0 ]; then
+    print(0)
+" 2>> "$LOG")
+        log "TWSE attempt $RETRY: ${TWSE_COUNT:-0} rows"
+        if [ "${TWSE_COUNT:-0}" -gt 100 ]; then
+            log "TWSE daily: $TWSE_COUNT rows fetched"
+            TWSE_OK=true
+            break
+        fi
+        if [ "$RETRY" -lt 3 ]; then
+            log "TWSE data insufficient ($TWSE_COUNT rows), retrying in 10 min..."
+            sleep 600
+        fi
+    done
+    if [ "$TWSE_OK" = "true" ]; then
         OK_STEPS=$((OK_STEPS + 1))
     else
-        log "ERROR: Market data update failed"
-        tg_notify "⚠️ 投資系統: 台股行情更新失敗"
+        log "ERROR: TWSE data still insufficient after 3 attempts ($TWSE_COUNT rows)"
+        tg_notify "⚠️ 投資系統: 台股行情僅 ${TWSE_COUNT:-0} 筆 (預期 1000+)，需手動重跑"
     fi
 
     # 1.5 國際指數 + 商品行情 (yfinance)
